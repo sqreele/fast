@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  fastapi:
+    environment:
+      - DEBUG=True
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+      - /app/.pytest_cache 
