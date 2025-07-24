@@ -186,7 +186,7 @@ export const systemApi = {
   },
   
   upscale: async (resource: string, target: number) => {
-    const response: AxiosResponse<ApiResponse<{ status: string; details: any }>> = 
+    const response: AxiosResponse<ApiResponse<{ status: string; details: Record<string, unknown> }>> = 
       await api.post('/system/upscale', { resource, target });
     return response.data;
   }

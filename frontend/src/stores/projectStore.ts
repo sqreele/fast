@@ -1,4 +1,3 @@
-// Example: Updated projectStore.ts
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { Project, projectsApi } from '../services/api';
@@ -44,7 +43,7 @@ export const useProjectStore = create<ProjectState>()(
         try {
           const response = await projectsApi.getProjects();
           set({ projects: response.data, isLoading: false });
-        } catch (error: any) {
+        } catch (error: unknown) {
           const errorMessage = handleApiError(error);
           set({ error: errorMessage, isLoading: false });
         }
@@ -55,7 +54,7 @@ export const useProjectStore = create<ProjectState>()(
         try {
           const response = await projectsApi.getProject(id);
           set({ currentProject: response.data, isLoading: false });
-        } catch (error: any) {
+        } catch (error: unknown) {
           const errorMessage = handleApiError(error);
           set({ error: errorMessage, isLoading: false });
         }
@@ -70,7 +69,7 @@ export const useProjectStore = create<ProjectState>()(
             projects: [...projects, response.data], 
             isLoading: false 
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           const errorMessage = handleApiError(error);
           set({ error: errorMessage, isLoading: false });
         }
@@ -86,7 +85,7 @@ export const useProjectStore = create<ProjectState>()(
             currentProject: response.data,
             isLoading: false
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           const errorMessage = handleApiError(error);
           set({ error: errorMessage, isLoading: false });
         }
@@ -102,7 +101,7 @@ export const useProjectStore = create<ProjectState>()(
             currentProject: null,
             isLoading: false
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           const errorMessage = handleApiError(error);
           set({ error: errorMessage, isLoading: false });
         }

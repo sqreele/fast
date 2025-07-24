@@ -45,6 +45,10 @@ class User(UserBase):
     created_at: datetime
     updated_at: datetime
 
+class UserWithProperties(User):
+    """User with full property access details"""
+    properties: Optional[List["Property"]] = Field(default_factory=list, description="Properties the user has access to")
+
 # Property schemas
 class PropertyBase(BaseSchema):
     name: str = Field(..., min_length=1, max_length=100, description="Property name")
@@ -63,6 +67,10 @@ class Property(PropertyBase):
     id: int
     created_at: datetime
     updated_at: datetime
+
+class PropertyWithUsers(Property):
+    """Property with full user access details"""
+    users: Optional[List["User"]] = Field(default_factory=list, description="Users who have access to this property")
 
 # Room schemas
 class RoomBase(BaseSchema):

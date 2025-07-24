@@ -21,7 +21,8 @@ const handler = NextAuth({
         }
 
         try {
-          const res = await fetch(`${process.env.BACKEND_URL || "http://localhost:8000"}/api/v1/login`, {
+          // This will use the BACKEND_URL environment variable
+          const res = await fetch(`${process.env.BACKEND_URL}/api/v1/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -30,7 +31,10 @@ const handler = NextAuth({
             })
           });
 
-          if (!res.ok) return null;
+          if (!res.ok) {
+            console.error('Login failed:', res.status, res.statusText);
+            return null;
+          }
 
           const user = await res.json() as ExtendedUser;
           if (user && user.token) {
@@ -49,7 +53,8 @@ const handler = NextAuth({
     })
   ],
   pages: {
-    error: '/auth/error', // Use our custom error page
+    signIn: '/api/auth/signin',
+    error: '/api/auth/error',  // This should fix the 404 on /auth/error
   },
   session: {
     strategy: "jwt"
@@ -71,8 +76,15 @@ const handler = NextAuth({
           id: token.user?.id || session.user?.email || "unknown"
         }
       };
+    },
+    async redirect({ url, baseUrl }) {
+      // Ensure redirects stay within the app
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     }
-  }
+  },
+  debug: process.env.NODE_ENV === 'development',
 });
 
 export { handler as GET, handler as POST };

@@ -8,12 +8,17 @@ interface UseApiState<T> {
 }
 
 interface UseApiReturn<T> extends UseApiState<T> {
-  execute: (...args: any[]) => Promise<void>;
+  execute: (...args: unknown[]) => Promise<void>;
   reset: () => void;
 }
 
+interface ApiResponse<T> {
+  data: T;
+  message?: string;
+}
+
 export function useApi<T>(
-  apiFunction: (...args: any[]) => Promise<{ data: T; message?: string }>
+  apiFunction: (...args: unknown[]) => Promise<ApiResponse<T>>
 ): UseApiReturn<T> {
   const [state, setState] = useState<UseApiState<T>>({
     data: null,
@@ -22,7 +27,7 @@ export function useApi<T>(
   });
 
   const execute = useCallback(
-    async (...args: any[]) => {
+    async (...args: unknown[]) => {
       setState(prev => ({ ...prev, loading: true, error: null }));
       
       try {
@@ -35,7 +40,9 @@ export function useApi<T>(
       } catch (error) {
         const errorMessage = error instanceof AxiosError
           ? error.response?.data?.message || error.message
-          : 'An unexpected error occurred';
+          : error instanceof Error 
+            ? error.message
+            : 'An unexpected error occurred';
           
         setState({
           data: null,

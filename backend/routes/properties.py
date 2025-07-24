@@ -7,11 +7,11 @@ from typing import List, Optional
 from datetime import datetime
 
 from database import get_db
-from models.models import Property, Room, Machine, User
-from schemas import PropertyCreate, PropertyUpdate, Property as PropertySchema
+from models.models import Property, Room, Machine, User, UserPropertyAccess as UserPropertyAccessModel
+from schemas import PropertyCreate, PropertyUpdate, Property as PropertySchema, PropertyWithUsers
 from schemas import RoomCreate, RoomUpdate, Room as RoomSchema
 from schemas import MachineCreate, MachineUpdate, Machine as MachineSchema
-from schemas import MessageResponse, PaginatedResponse
+from schemas import MessageResponse, PaginatedResponse, UserPropertyAccess, UserPropertyAccessCreate
 from auth import get_current_user
 
 router = APIRouter(prefix="/properties", tags=["properties"])
@@ -301,4 +301,80 @@ async def delete_machine(
     machine.updated_at = datetime.utcnow()
     db.commit()
     
-    return MessageResponse(message="Machine deleted successfully") 
+    return MessageResponse(message="Machine deleted successfully")
+
+# Many-to-many relationship endpoints for properties
+@router.get("/{property_id}/users", response_model=List[UserPropertyAccess])
+async def get_property_users(
+    property_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all users who have access to a property"""
+    property_obj = db.query(Property).filter(Property.id == property_id).first()
+    if not property_obj:
+        raise HTTPException(status_code=404, detail="Property not found")
+    
+    return property_obj.user_access
+
+@router.post("/{property_id}/users", response_model=UserPropertyAccess)
+async def add_property_user_access(
+    property_id: int,
+    user_access: UserPropertyAccessCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Add user access to a property"""
+    property_obj = db.query(Property).filter(Property.id == property_id).first()
+    if not property_obj:
+        raise HTTPException(status_code=404, detail="Property not found")
+    
+    # Check if access already exists
+    existing_access = db.query(UserPropertyAccessModel).filter(
+        UserPropertyAccessModel.property_id == property_id,
+        UserPropertyAccessModel.user_id == user_access.user_id
+    ).first()
+    
+    if existing_access:
+        raise HTTPException(status_code=400, detail="User already has access to this property")
+    
+    user_access_dict = user_access.dict()
+    user_access_dict["property_id"] = property_id
+    db_user_access = UserPropertyAccessModel(**user_access_dict)
+    db.add(db_user_access)
+    db.commit()
+    db.refresh(db_user_access)
+    return db_user_access
+
+@router.delete("/{property_id}/users/{user_id}", response_model=MessageResponse)
+async def remove_property_user_access(
+    property_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Remove user access from a property"""
+    user_access = db.query(UserPropertyAccessModel).filter(
+        UserPropertyAccessModel.property_id == property_id,
+        UserPropertyAccessModel.user_id == user_id
+    ).first()
+    
+    if not user_access:
+        raise HTTPException(status_code=404, detail="User access not found")
+    
+    db.delete(user_access)
+    db.commit()
+    return MessageResponse(message="User access removed successfully")
+
+@router.get("/{property_id}/with-users", response_model=PropertyWithUsers)
+async def get_property_with_users(
+    property_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get property with all user access details"""
+    property_obj = db.query(Property).filter(Property.id == property_id).first()
+    if not property_obj:
+        raise HTTPException(status_code=404, detail="Property not found")
+    
+    return property_obj 

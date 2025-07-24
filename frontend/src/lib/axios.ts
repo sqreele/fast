@@ -4,12 +4,17 @@ import { getSession } from 'next-auth/react';
 // Enhanced error interface
 interface ApiError extends Error {
   status?: number;
-  data?: any;
+  data?: unknown;
+}
+
+interface ErrorResponse {
+  message?: string;
+  [key: string]: unknown;
 }
 
 // Create axios instance
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000/api/v1',
+  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost/api/v1',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -39,7 +44,7 @@ api.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
   },
-  async (error: AxiosError) => {
+  async (error: AxiosError<ErrorResponse>) => {
     const apiError: ApiError = new Error();
     
     if (error.response) {
@@ -47,7 +52,7 @@ api.interceptors.response.use(
       const { status, data } = error.response;
       apiError.status = status;
       apiError.data = data;
-      apiError.message = (data as any)?.message || `Server error: ${status}`;
+      apiError.message = data?.message || `Server error: ${status}`;
       
       switch (status) {
         case 401:
@@ -88,9 +93,10 @@ api.interceptors.response.use(
 );
 
 // Helper function to handle API errors
-export const handleApiError = (error: any): string => {
-  if (error.status) {
-    switch (error.status) {
+export const handleApiError = (error: unknown): string => {
+  if (error && typeof error === 'object' && 'status' in error) {
+    const apiError = error as ApiError;
+    switch (apiError.status) {
       case 400:
         return 'Bad request. Please check your input.';
       case 401:
@@ -100,16 +106,21 @@ export const handleApiError = (error: any): string => {
       case 404:
         return 'The requested resource was not found.';
       case 422:
-        return error.data?.message || 'Validation error occurred.';
+        return (apiError.data as ErrorResponse)?.message || 'Validation error occurred.';
       case 429:
         return 'Too many requests. Please try again later.';
       case 500:
         return 'Server error. Please try again later.';
       default:
-        return error.message || 'An unexpected error occurred.';
+        return apiError.message || 'An unexpected error occurred.';
     }
   }
-  return error.message || 'Network error. Please check your connection.';
+  
+  if (error instanceof Error) {
+    return error.message;
+  }
+  
+  return 'Network error. Please check your connection.';
 };
 
 export default api;
