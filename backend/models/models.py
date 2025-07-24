@@ -554,7 +554,6 @@ class Job(Base):
     estimated_hours = Column(Integer, index=True)
     actual_hours = Column(Integer, index=True)
     priority = Column(Enum(IssuePriority), nullable=False, default=IssuePriority.MEDIUM, index=True)
-    due_date = Column(DateTime, index=True)
     started_at = Column(DateTime, index=True)
     completed_at = Column(DateTime, index=True)
     created_at = Column(DateTime, server_default=func.now(), index=True)
@@ -574,7 +573,6 @@ class Job(Base):
         Index('idx_job_room_status', 'room_id', 'status'),
         Index('idx_job_topic_status', 'topic_id', 'status'),
         Index('idx_job_created_by_date', 'created_by_id', 'created_at'),
-        Index('idx_job_due_date_status', 'due_date', 'status'),
         Index('idx_job_priority_status', 'priority', 'status'),
     )
 

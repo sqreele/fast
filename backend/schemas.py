@@ -570,7 +570,6 @@ class JobBase(BaseSchema):
     estimated_hours: Optional[int] = Field(None, ge=0, description="Estimated hours to complete")
     actual_hours: Optional[int] = Field(None, ge=0, description="Actual hours spent")
     priority: IssuePriority = Field(IssuePriority.MEDIUM, description="Job priority")
-    due_date: Optional[datetime] = Field(None, description="Due date for job completion")
 
 class JobCreate(JobBase):
     created_by_id: int = Field(..., description="User ID who created the job")
@@ -586,7 +585,6 @@ class JobUpdate(BaseSchema):
     estimated_hours: Optional[int] = Field(None, ge=0)
     actual_hours: Optional[int] = Field(None, ge=0)
     priority: Optional[IssuePriority] = None
-    due_date: Optional[datetime] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
