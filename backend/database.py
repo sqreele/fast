@@ -38,10 +38,10 @@ try:
     from models import (
         User, Property, Room, Machine, Topic, Procedure,
         PMSchedule, PMExecution, Issue, Inspection, PMFile, UserPropertyAccess,
-        WorkOrder, Notification, MaintenanceLog,
+        WorkOrder, Notification, MaintenanceLog, Job, JobUserAssignment,
         UserRole, FrequencyType, PMStatus, IssueStatus, IssuePriority,
         InspectionResult, ImageType, AccessLevel, MachineType, MachineStatus,
-        WorkOrderStatus, WorkOrderType, NotificationType
+        WorkOrderStatus, WorkOrderType, NotificationType, JobStatus
     )
     logger.info("All models imported successfully")
 except ImportError as e:

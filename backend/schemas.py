@@ -7,7 +7,7 @@ from datetime import datetime
 from models.models import (
     UserRole, FrequencyType, PMStatus, IssueStatus, IssuePriority,
     InspectionResult, ImageType, AccessLevel, MachineType, MachineStatus,
-    WorkOrderStatus, WorkOrderType, NotificationType
+    WorkOrderStatus, WorkOrderType, NotificationType, JobStatus
 )
 
 # Base schemas
@@ -555,4 +555,77 @@ class MaintenanceLog(MaintenanceLogBase):
     id: int
     created_at: datetime
     machine: Optional[Machine] = None
-    user: Optional[User] = None 
+    user: Optional[User] = None
+
+# Job schemas
+class JobBase(BaseSchema):
+    title: str = Field(..., min_length=1, max_length=200, description="Job title")
+    description: Optional[str] = Field(None, description="Job description")
+    topic_id: Optional[int] = Field(None, description="Related topic ID")
+    room_id: Optional[int] = Field(None, description="Room ID where job is performed")
+    property_id: int = Field(..., description="Property ID where job is performed")
+    status: JobStatus = Field(JobStatus.PENDING, description="Job status")
+    before_image: Optional[str] = Field(None, max_length=500, description="Before image file path")
+    after_image: Optional[str] = Field(None, max_length=500, description="After image file path")
+    estimated_hours: Optional[int] = Field(None, ge=0, description="Estimated hours to complete")
+    actual_hours: Optional[int] = Field(None, ge=0, description="Actual hours spent")
+    priority: IssuePriority = Field(IssuePriority.MEDIUM, description="Job priority")
+    due_date: Optional[datetime] = Field(None, description="Due date for job completion")
+
+class JobCreate(JobBase):
+    created_by_id: int = Field(..., description="User ID who created the job")
+
+class JobUpdate(BaseSchema):
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = None
+    topic_id: Optional[int] = None
+    room_id: Optional[int] = None
+    status: Optional[JobStatus] = None
+    before_image: Optional[str] = Field(None, max_length=500)
+    after_image: Optional[str] = Field(None, max_length=500)
+    estimated_hours: Optional[int] = Field(None, ge=0)
+    actual_hours: Optional[int] = Field(None, ge=0)
+    priority: Optional[IssuePriority] = None
+    due_date: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+class Job(JobBase):
+    id: int
+    created_by_id: int
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+    topic: Optional[Topic] = None
+    room: Optional[Room] = None
+    property: Optional[Property] = None
+    created_by: Optional[User] = None
+
+# JobUserAssignment schemas
+class JobUserAssignmentBase(BaseSchema):
+    job_id: int = Field(..., description="Job ID")
+    user_id: int = Field(..., description="User ID")
+    role_in_job: str = Field("ASSIGNEE", max_length=50, description="Role in job (ASSIGNEE, SUPERVISOR, etc.)")
+    notes: Optional[str] = Field(None, description="Assignment notes")
+    is_active: bool = Field(True, description="Assignment active status")
+
+class JobUserAssignmentCreate(JobUserAssignmentBase):
+    assigned_by_id: int = Field(..., description="User ID who made the assignment")
+
+class JobUserAssignmentUpdate(BaseSchema):
+    role_in_job: Optional[str] = Field(None, max_length=50)
+    notes: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class JobUserAssignment(JobUserAssignmentBase):
+    id: int
+    assigned_by_id: int
+    assigned_at: datetime
+    job: Optional[Job] = None
+    user: Optional[User] = None
+    assigned_by: Optional[User] = None
+
+# Job with assignments schema
+class JobWithAssignments(Job):
+    user_assignments: List[JobUserAssignment] = Field(default_factory=list, description="User assignments for this job")

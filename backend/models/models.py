@@ -98,6 +98,14 @@ class NotificationType(str, enum.Enum):
     INSPECTION_DUE = "INSPECTION_DUE"
     SYSTEM_ALERT = "SYSTEM_ALERT"
 
+class JobStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    ASSIGNED = "ASSIGNED"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+    ON_HOLD = "ON_HOLD"
+
 # Models with Indexes
 class User(Base):
     __tablename__ = "users"
@@ -123,6 +131,8 @@ class User(Base):
     notifications = relationship("Notification", back_populates="user", lazy="selectin")
     created_work_orders = relationship("WorkOrder", foreign_keys="WorkOrder.created_by_id", lazy="selectin")
     assigned_work_orders = relationship("WorkOrder", foreign_keys="WorkOrder.assigned_to_id", lazy="selectin")
+    job_assignments = relationship("JobUserAssignment", back_populates="user", lazy="selectin")
+    created_jobs = relationship("Job", foreign_keys="Job.created_by_id", back_populates="created_by", lazy="selectin")
     
     # Indexes
     __table_args__ = (
@@ -144,6 +154,7 @@ class Property(Base):
     # Relationships
     rooms = relationship("Room", back_populates="property", lazy="selectin")
     user_access = relationship("UserPropertyAccess", back_populates="property", lazy="selectin")
+    jobs = relationship("Job", back_populates="property", lazy="selectin")
     
     # Indexes
     __table_args__ = (
@@ -165,6 +176,7 @@ class Room(Base):
     property = relationship("Property", back_populates="rooms", lazy="selectin")
     machines = relationship("Machine", back_populates="room", lazy="selectin")
     issues = relationship("Issue", back_populates="room", lazy="selectin")
+    jobs = relationship("Job", back_populates="room", lazy="selectin")
     
     # Indexes
     __table_args__ = (
@@ -223,6 +235,7 @@ class Topic(Base):
     
     # Relationships
     procedures = relationship("Procedure", back_populates="topic", lazy="selectin")
+    jobs = relationship("Job", back_populates="topic", lazy="selectin")
     
     # Indexes
     __table_args__ = (
@@ -523,4 +536,69 @@ class MaintenanceLog(Base):
         Index('idx_maintenance_log_type_date', 'log_type', 'performed_at'),
         Index('idx_maintenance_log_user_date', 'user_id', 'performed_at'),
         Index('idx_maintenance_log_cost_date', 'cost', 'performed_at'),
-    ) 
+    )
+
+class Job(Base):
+    __tablename__ = "jobs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False, index=True)
+    description = Column(Text)
+    topic_id = Column(Integer, ForeignKey("topics.id"), index=True)
+    room_id = Column(Integer, ForeignKey("rooms.id"), index=True)
+    property_id = Column(Integer, ForeignKey("properties.id"), nullable=False, index=True)
+    status = Column(Enum(JobStatus), nullable=False, default=JobStatus.PENDING, index=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    before_image = Column(String(500), index=True)  # File path for before image
+    after_image = Column(String(500), index=True)   # File path for after image
+    estimated_hours = Column(Integer, index=True)
+    actual_hours = Column(Integer, index=True)
+    priority = Column(Enum(IssuePriority), nullable=False, default=IssuePriority.MEDIUM, index=True)
+    due_date = Column(DateTime, index=True)
+    started_at = Column(DateTime, index=True)
+    completed_at = Column(DateTime, index=True)
+    created_at = Column(DateTime, server_default=func.now(), index=True)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    topic = relationship("Topic", back_populates="jobs", lazy="selectin")
+    room = relationship("Room", back_populates="jobs", lazy="selectin")
+    property = relationship("Property", back_populates="jobs", lazy="selectin")
+    created_by = relationship("User", foreign_keys=[created_by_id], back_populates="created_jobs", lazy="selectin")
+    user_assignments = relationship("JobUserAssignment", back_populates="job", lazy="selectin")
+    
+    # Indexes
+    __table_args__ = (
+        Index('idx_job_status_priority', 'status', 'priority'),
+        Index('idx_job_property_status', 'property_id', 'status'),
+        Index('idx_job_room_status', 'room_id', 'status'),
+        Index('idx_job_topic_status', 'topic_id', 'status'),
+        Index('idx_job_created_by_date', 'created_by_id', 'created_at'),
+        Index('idx_job_due_date_status', 'due_date', 'status'),
+        Index('idx_job_priority_status', 'priority', 'status'),
+    )
+
+class JobUserAssignment(Base):
+    __tablename__ = "job_user_assignments"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    assigned_at = Column(DateTime, server_default=func.now(), index=True)
+    assigned_by_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    role_in_job = Column(String(50), default="ASSIGNEE", index=True)  # ASSIGNEE, SUPERVISOR, etc.
+    notes = Column(Text)
+    is_active = Column(Boolean, default=True, index=True)
+    
+    # Relationships
+    job = relationship("Job", back_populates="user_assignments", lazy="selectin")
+    user = relationship("User", back_populates="job_assignments", lazy="selectin")
+    assigned_by = relationship("User", foreign_keys=[assigned_by_id], lazy="selectin")
+    
+    # Indexes
+    __table_args__ = (
+        Index('idx_job_user_assignment_job_user', 'job_id', 'user_id'),
+        Index('idx_job_user_assignment_user_active', 'user_id', 'is_active'),
+        Index('idx_job_user_assignment_assigned_date', 'assigned_at', 'job_id'),
+        Index('idx_job_user_assignment_role', 'role_in_job', 'is_active'),
+    )
