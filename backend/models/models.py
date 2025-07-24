@@ -1,7 +1,7 @@
 """
 SQLAlchemy models for PM System
 """
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, ForeignKey, Text, Index
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, ForeignKey, Text, Index, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -123,6 +123,7 @@ class User(Base):
     notifications = relationship("Notification", back_populates="user", lazy="selectin")
     created_work_orders = relationship("WorkOrder", foreign_keys="WorkOrder.created_by_id", lazy="selectin")
     assigned_work_orders = relationship("WorkOrder", foreign_keys="WorkOrder.assigned_to_id", lazy="selectin")
+    jobs = relationship("Job", secondary="job_users", back_populates="users", lazy="selectin")
     
     # Indexes
     __table_args__ = (
@@ -144,6 +145,7 @@ class Property(Base):
     # Relationships
     rooms = relationship("Room", back_populates="property", lazy="selectin")
     user_access = relationship("UserPropertyAccess", back_populates="property", lazy="selectin")
+    jobs = relationship("Job", secondary="job_properties", back_populates="properties", lazy="selectin")
     
     # Indexes
     __table_args__ = (
@@ -165,6 +167,7 @@ class Room(Base):
     property = relationship("Property", back_populates="rooms", lazy="selectin")
     machines = relationship("Machine", back_populates="room", lazy="selectin")
     issues = relationship("Issue", back_populates="room", lazy="selectin")
+    jobs = relationship("Job", secondary="job_rooms", back_populates="rooms", lazy="selectin")
     
     # Indexes
     __table_args__ = (
@@ -211,22 +214,76 @@ class Machine(Base):
         Index('idx_machine_next_maintenance', 'next_maintenance'),
     )
 
+
+# Job-related Enums
+class JobStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+    ON_HOLD = "ON_HOLD"
+
+
+# Job Models and Many-to-Many Association Tables
+
+# Association table for Job-User many-to-many relationship
+job_user_association = Table(
+    'job_users',
+    Base.metadata,
+    Column('job_id', Integer, ForeignKey('jobs.id'), primary_key=True),
+    Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
+    Index('idx_job_user_job', 'job_id'),
+    Index('idx_job_user_user', 'user_id')
+)
+
+# Association table for Job-Topic many-to-many relationship
+job_topic_association = Table(
+    'job_topics',
+    Base.metadata,
+    Column('job_id', Integer, ForeignKey('jobs.id'), primary_key=True),
+    Column('topic_id', Integer, ForeignKey('topics.id'), primary_key=True),
+    Index('idx_job_topic_job', 'job_id'),
+    Index('idx_job_topic_topic', 'topic_id')
+)
+
+# Association table for Job-Room many-to-many relationship
+job_room_association = Table(
+    'job_rooms',
+    Base.metadata,
+    Column('job_id', Integer, ForeignKey('jobs.id'), primary_key=True),
+    Column('room_id', Integer, ForeignKey('rooms.id'), primary_key=True),
+    Index('idx_job_room_job', 'job_id'),
+    Index('idx_job_room_room', 'room_id')
+)
+
+# Association table for Job-Property many-to-many relationship
+job_property_association = Table(
+    'job_properties',
+    Base.metadata,
+    Column('job_id', Integer, ForeignKey('jobs.id'), primary_key=True),
+    Column('property_id', Integer, ForeignKey('properties.id'), primary_key=True),
+    Index('idx_job_property_job', 'job_id'),
+    Index('idx_job_property_property', 'property_id')
+)
+
+
 class Topic(Base):
     __tablename__ = "topics"
     
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(100), nullable=False, index=True)
+    name = Column(String(100), nullable=False, unique=True, index=True)
     description = Column(Text)
     is_active = Column(Boolean, default=True, index=True)
-    created_at = Column(DateTime, server_default=func.now())
+    created_at = Column(DateTime, server_default=func.now(), index=True)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
     # Relationships
+    jobs = relationship("Job", secondary=job_topic_association, back_populates="topics", lazy="selectin")
     procedures = relationship("Procedure", back_populates="topic", lazy="selectin")
     
     # Indexes
     __table_args__ = (
-        Index('idx_topic_title_active', 'title', 'is_active'),
+        Index('idx_topic_name_active', 'name', 'is_active'),
     )
 
 class Procedure(Base):
@@ -523,4 +580,30 @@ class MaintenanceLog(Base):
         Index('idx_maintenance_log_type_date', 'log_type', 'performed_at'),
         Index('idx_maintenance_log_user_date', 'user_id', 'performed_at'),
         Index('idx_maintenance_log_cost_date', 'cost', 'performed_at'),
+    )
+
+
+class Job(Base):
+    __tablename__ = "jobs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False, index=True)
+    description = Column(Text)
+    status = Column(Enum(JobStatus), nullable=False, default=JobStatus.PENDING, index=True)
+    before_image = Column(String(500))  # URL or path to before image
+    after_image = Column(String(500))   # URL or path to after image
+    created_at = Column(DateTime, server_default=func.now(), index=True)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Many-to-many relationships
+    users = relationship("User", secondary=job_user_association, back_populates="jobs", lazy="selectin")
+    topics = relationship("Topic", secondary=job_topic_association, back_populates="jobs", lazy="selectin")
+    rooms = relationship("Room", secondary=job_room_association, back_populates="jobs", lazy="selectin")
+    properties = relationship("Property", secondary=job_property_association, back_populates="jobs", lazy="selectin")
+    
+    # Indexes
+    __table_args__ = (
+        Index('idx_job_status_created', 'status', 'created_at'),
+        Index('idx_job_title_status', 'title', 'status'),
+        Index('idx_job_created_date', 'created_at'),
     ) 
