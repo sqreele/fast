@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import users, admin, migrations, files, properties, maintenance, issues, work_orders, notifications, maintenance_logs
+from routes import users, admin, migrations, files, properties, maintenance, issues, work_orders, notifications, maintenance_logs, jobs
 from database import engine, Base, create_tables
 from models.models import *
 from admin import admin_views
@@ -29,6 +29,7 @@ app.include_router(issues.router, prefix="/api/v1")
 app.include_router(work_orders.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(maintenance_logs.router, prefix="/api/v1")
+app.include_router(jobs.router, prefix="/api/v1")
 
 # Mount SQLAlchemy Admin
 from sqladmin import Admin

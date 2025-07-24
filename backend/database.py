@@ -33,19 +33,8 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-# Import all models to ensure they are registered with Base
-try:
-    from models import (
-        User, Property, Room, Machine, Topic, Procedure,
-        PMSchedule, PMExecution, Issue, Inspection, PMFile, UserPropertyAccess,
-        WorkOrder, Notification, MaintenanceLog, Job, JobUserAssignment,
-        UserRole, FrequencyType, PMStatus, IssueStatus, IssuePriority,
-        InspectionResult, ImageType, AccessLevel, MachineType, MachineStatus,
-        WorkOrderStatus, WorkOrderType, NotificationType, JobStatus
-    )
-    logger.info("All models imported successfully")
-except ImportError as e:
-    logger.error(f"Error importing models: {e}")
+# Do not import all models here to avoid circular imports.
+# If you need to ensure all models are registered, import them in the main app or in a dedicated function before table creation.
 
 # Create all tables
 def create_tables():

@@ -1,9 +1,43 @@
 'use client';
 
 import { signIn, signOut, useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
+
+interface SystemStatus {
+  status: string;
+}
 
 export default function Dashboard() {
   const { data: session } = useSession();
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+
+  const checkHealth = async () => {
+    try {
+      const response = await fetch('/api/health');
+      if (response.ok) {
+        const data = await response.json() as SystemStatus;
+        setSystemStatus(data);
+      }
+    } catch (error) {
+      console.error('Health check failed:', error);
+    }
+  };
+
+  const fetchProjects = async () => {
+    // Placeholder for future implementation
+    console.log('Fetching projects...');
+  };
+
+  const fetchTickets = async () => {
+    // Placeholder for future implementation
+    console.log('Fetching tickets...');
+  };
+
+  useEffect(() => {
+    checkHealth();
+    fetchProjects();
+    fetchTickets();
+  }, []);
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-indigo-100 to-white">
@@ -26,6 +60,13 @@ export default function Dashboard() {
             </button>
           )}
         </div>
+
+        {/* System Status */}
+        {systemStatus && (
+          <div className="mb-4 p-2 bg-green-100 text-green-800 rounded">
+            System Status: {systemStatus.status}
+          </div>
+        )}
 
         {/* Action Row */}
         <div className="flex flex-wrap gap-4 justify-center mb-8">

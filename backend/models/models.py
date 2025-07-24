@@ -131,7 +131,12 @@ class User(Base):
     notifications = relationship("Notification", back_populates="user", lazy="selectin")
     created_work_orders = relationship("WorkOrder", foreign_keys="WorkOrder.created_by_id", lazy="selectin")
     assigned_work_orders = relationship("WorkOrder", foreign_keys="WorkOrder.assigned_to_id", lazy="selectin")
-    job_assignments = relationship("JobUserAssignment", back_populates="user", lazy="selectin")
+    job_assignments = relationship(
+        "JobUserAssignment",
+        back_populates="user",
+        foreign_keys="JobUserAssignment.user_id",
+        lazy="selectin"
+    )
     created_jobs = relationship("Job", foreign_keys="Job.created_by_id", back_populates="created_by", lazy="selectin")
     
     # Indexes
@@ -590,8 +595,17 @@ class JobUserAssignment(Base):
     
     # Relationships
     job = relationship("Job", back_populates="user_assignments", lazy="selectin")
-    user = relationship("User", back_populates="job_assignments", lazy="selectin")
-    assigned_by = relationship("User", foreign_keys=[assigned_by_id], lazy="selectin")
+    user = relationship(
+        "User",
+        back_populates="job_assignments",
+        foreign_keys=[user_id],
+        lazy="selectin"
+    )
+    assigned_by = relationship(
+        "User",
+        foreign_keys=[assigned_by_id],
+        lazy="selectin"
+    )
     
     # Indexes
     __table_args__ = (

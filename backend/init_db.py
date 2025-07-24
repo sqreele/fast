@@ -7,7 +7,7 @@ import time
 from sqlalchemy import create_engine, text
 from database import engine, Base
 from models.models import *
-from admin import AdminManager
+from admin_manager import AdminManager
 import logging
 
 logging.basicConfig(level=logging.INFO)

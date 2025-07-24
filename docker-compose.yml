@@ -52,6 +52,23 @@ services:
       pm_postgres_db:
         condition: service_healthy
 
+  frontend:
+    build: ./frontend
+    container_name: nextjs_frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - fastapi
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
   nginx:
     build: ./nginx
     container_name: pm_nginx
@@ -61,6 +78,8 @@ services:
       - "443:443"
     depends_on:
       fastapi:
+        condition: service_healthy
+      frontend:
         condition: service_healthy
     volumes:
       - ./nginx/ssl:/etc/nginx/ssl:ro

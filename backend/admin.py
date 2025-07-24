@@ -5,7 +5,7 @@ from sqladmin import Admin, ModelView
 from models.models import (
     User, Property, Room, Machine, Topic, Procedure,
     PMSchedule, PMExecution, Issue, Inspection, PMFile, UserPropertyAccess,
-    WorkOrder, Notification, MaintenanceLog
+    WorkOrder, Notification, MaintenanceLog, Job
 )
 from database import engine
 
@@ -288,6 +288,26 @@ class UserPropertyAccessAdmin(ModelView, model=UserPropertyAccess):
     can_delete = True
     can_view_details = True
 
+# Job Admin View
+class JobAdmin(ModelView, model=Job):
+    name = "Job"
+    name_plural = "Jobs"
+    icon = "fa-solid fa-briefcase"
+    column_list = [
+        Job.id, Job.title, Job.status, Job.priority, Job.property_id, Job.room_id, Job.topic_id,
+        Job.created_by_id, Job.estimated_hours, Job.actual_hours, Job.started_at, Job.completed_at, Job.created_at
+    ]
+    column_searchable_list = [Job.title, Job.description]
+    column_sortable_list = [
+        Job.id, Job.title, Job.status, Job.priority, Job.property_id, Job.room_id, Job.topic_id,
+        Job.created_by_id, Job.estimated_hours, Job.actual_hours, Job.started_at, Job.completed_at, Job.created_at
+    ]
+    column_default_sort = ("created_at", True)
+    can_create = True
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
 # Create admin views list
 admin_views = [
     UserAdmin,
@@ -304,5 +324,6 @@ admin_views = [
     NotificationAdmin,
     MaintenanceLogAdmin,
     PMFileAdmin,
-    UserPropertyAccessAdmin
+    UserPropertyAccessAdmin,
+    JobAdmin
 ] 
