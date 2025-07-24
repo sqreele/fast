@@ -118,6 +118,7 @@ class User(Base):
     phone = Column(String(20))
     role = Column(Enum(UserRole), nullable=False, index=True)
     is_active = Column(Boolean, default=True, index=True)
+    password_hash = Column(String(255), nullable=False)  # Add password hash field
     created_at = Column(DateTime, server_default=func.now(), index=True)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     

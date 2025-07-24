@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import users, admin, migrations, files, properties, maintenance, issues, work_orders, notifications, maintenance_logs, jobs
+from routes import users, admin, migrations, files, properties, maintenance, issues, work_orders, notifications, maintenance_logs, jobs, auth
 from database import engine, Base, create_tables
 from models.models import *
 from admin import admin_views
@@ -19,6 +19,7 @@ except Exception as e:
 
 app = FastAPI(title="PM System API", version="1.0.0")
 
+app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 app.include_router(migrations.router, prefix="/api/v1/migrations", tags=["migrations"])

@@ -29,7 +29,8 @@ class UserBase(BaseSchema):
     is_active: bool = Field(True, description="User active status")
 
 class UserCreate(UserBase):
-    pass
+    password: str = Field(..., min_length=6, description="User password")
+    property_ids: Optional[List[int]] = Field(default_factory=list, description="List of property IDs to assign")
 
 class UserUpdate(BaseSchema):
     username: Optional[str] = Field(None, min_length=3, max_length=50)
@@ -44,6 +45,7 @@ class User(UserBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    # Note: password_hash is not included in the response for security
 
 class UserWithProperties(User):
     """User with full property access details"""

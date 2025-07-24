@@ -29,6 +29,17 @@ async def get_properties(
         query = query.filter(Property.is_active == is_active)
     return query.all()
 
+@router.get("/public", response_model=List[PropertySchema])
+async def get_public_properties(
+    is_active: Optional[bool] = Query(True),
+    db: Session = Depends(get_db)
+):
+    """Get all active properties (public endpoint for registration)"""
+    query = db.query(Property)
+    if is_active is not None:
+        query = query.filter(Property.is_active == is_active)
+    return query.all()
+
 @router.get("/{property_id}", response_model=PropertySchema)
 async def get_property(
     property_id: int,
