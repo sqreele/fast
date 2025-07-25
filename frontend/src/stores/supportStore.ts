@@ -39,8 +39,9 @@ export const useSupportStore = create<SupportState>()(
         try {
           const response = await supportApi.getTickets();
           set({ tickets: response.data, isLoading: false });
-        } catch (error: any) {
-          set({ error: error.message || 'Failed to fetch tickets', isLoading: false });
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to fetch tickets';
+          set({ error: errorMessage, isLoading: false });
         }
       },
       
@@ -49,8 +50,9 @@ export const useSupportStore = create<SupportState>()(
         try {
           const response = await supportApi.getTicket(id);
           set({ currentTicket: response.data, isLoading: false });
-        } catch (error: any) {
-          set({ error: error.message || 'Failed to fetch ticket', isLoading: false });
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to fetch ticket';
+          set({ error: errorMessage, isLoading: false });
         }
       },
       
@@ -63,8 +65,9 @@ export const useSupportStore = create<SupportState>()(
             tickets: [...tickets, response.data], 
             isLoading: false 
           });
-        } catch (error: any) {
-          set({ error: error.message || 'Failed to create ticket', isLoading: false });
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to create ticket';
+          set({ error: errorMessage, isLoading: false });
         }
       },
       
@@ -78,8 +81,9 @@ export const useSupportStore = create<SupportState>()(
             currentTicket: response.data,
             isLoading: false
           });
-        } catch (error: any) {
-          set({ error: error.message || 'Failed to update ticket', isLoading: false });
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to update ticket';
+          set({ error: errorMessage, isLoading: false });
         }
       },
     }),

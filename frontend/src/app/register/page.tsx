@@ -15,19 +15,7 @@ interface RegisterFormData {
   confirmPassword: string;
 }
 
-interface RegisterResponse {
-  message: string;
-  user: {
-    id: string;
-    username: string;
-    email: string;
-    first_name: string;
-    last_name: string;
-    phone: string;
-    role: string;
-    is_active: boolean;
-  };
-}
+
 
 export default function Register() {
   const router = useRouter();
