@@ -1,0 +1,34 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    postgresql-client \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Get current user ID to avoid permission issues
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+
+# Create a user that matches the host user to avoid permission issues
+RUN groupadd -g ${GROUP_ID} appuser && \
+    useradd -u ${USER_ID} -g appuser -m appuser
+
+# Copy requirements first for better Docker layer caching
+COPY requirements.txt .
+RUN python -m pip install --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+
+# Create upload directories with proper permissions
+RUN mkdir -p uploads/{images,documents,videos,audio,temp} && \
+    chown -R appuser:appuser /app
+
+# Switch to the non-root user
+USER appuser
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
