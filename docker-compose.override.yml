@@ -1,157 +1,38 @@
-version: '3.8'
-
+# Remove version field - it's obsolete
 services:
   fastapi:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
-      target: development
     environment:
       - DEBUG=True
       - LOG_LEVEL=DEBUG
       - DATABASE_URL=postgresql://pm_user:pm_password@pm_postgres_db:5432/pm_database
-      - PYTHONDONTWRITEBYTECODE=1
-      - PYTHONUNBUFFERED=1
-      - WATCHFILES_FORCE_POLLING=true
     volumes:
-      - ./backend:/app
-      - /app/__pycache__
-      - /app/.pytest_cache
-      - /app/venv
-    ports:
-      - "8000:8000"  # Expose for direct access during development
-    command: >
-      bash -c "
-      echo 'Waiting for database...' &&
-      python -c 'import time; time.sleep(10)' &&
-      echo 'Running database migrations...' &&
-      python init_db.py &&
-      echo 'Starting FastAPI application in development mode...' &&
-      uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app --log-level debug"
-    stdin_open: true
-    tty: true
-    security_opt: []  # Remove security restrictions for development
+      - ./backend:/app:rw
     read_only: false
-    tmpfs: []
+    tmpfs: []  # Override read-only tmpfs from main compose
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-      target: development
     environment:
       - NODE_ENV=development
       - NEXTAUTH_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=dev-secret-key-not-for-production
+      - NEXTAUTH_SECRET=dev-secret-key
       - BACKEND_URL=http://fastapi:8000
       - NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
-      - FAST_REFRESH=true
-      - WATCHPACK_POLLING=true
     volumes:
-      - ./frontend:/app
+      - ./frontend:/app:rw
       - /app/node_modules
       - /app/.next
-      - nextjs_cache:/app/.next/cache
-    ports:
-      - "3000:3000"  # Expose for direct access during development
-    command: >
-      sh -c "
-      echo 'Setting up development environment...' &&
-      # Ensure dependencies are installed
-      npm ci &&
-      # Fix permissions for mounted volumes
-      mkdir -p .next .next/cache .next/server .next/static &&
-      touch next-env.d.ts &&
-      echo 'Starting Next.js in development mode...' &&
-      npm run dev"
-    stdin_open: true
-    tty: true
-    security_opt: []  # Remove security restrictions for development
+      - nextjs_cache:/app/.next/cache  # Only use volume, not tmpfs
     read_only: false
-    tmpfs: []
-
-  pm_postgres_db:
-    ports:
-      - "15432:5432"  # Expose for direct database access during development
-    environment:
-      - POSTGRES_LOG_STATEMENT=all
-      - POSTGRES_LOG_MIN_DURATION_STATEMENT=0
-    command: >
-      postgres
-      -c log_statement=all
-      -c log_min_duration_statement=0
-      -c log_line_prefix='%t [%p-%l] %q%u@%d '
-      -c shared_preload_libraries=pg_stat_statements
-      -c pg_stat_statements.track=all
-
-  nginx:
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
-    ports:
-      - "80:80"
-      - "443:443"
-    security_opt: []  # Remove security restrictions for development
-
-  # Development tools
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: pm_pgadmin
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-    ports:
-      - "5050:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    depends_on:
-      pm_postgres_db:
-        condition: service_healthy
-    networks:
-      - pm_network
-
-  # Redis CLI for development
-  redis_cli:
-    image: redis:7-alpine
-    container_name: pm_redis_cli
-    command: ["sleep", "infinity"]
-    depends_on:
-      - redis
-    networks:
-      - pm_network
-    profiles:
-      - tools
-
-  # Mailhog for email testing
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: pm_mailhog
-    restart: unless-stopped
-    ports:
-      - "1025:1025"  # SMTP
-      - "8025:8025"  # Web UI
-    networks:
-      - pm_network
-
-  # File browser for uploads management
-  filebrowser:
-    image: filebrowser/filebrowser:latest
-    container_name: pm_filebrowser
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-    volumes:
-      - uploads_data:/srv
-      - ./filebrowser/filebrowser.json:/.filebrowser.json
-    environment:
-      - FB_BASEURL=/files
-    networks:
-      - pm_network
+    tmpfs: []  # Clear tmpfs from main compose to avoid conflicts
+    command: ["npm", "run", "dev"]
 
 volumes:
   nextjs_cache:
-    driver: local
-  pgadmin_data:
     driver: local
