@@ -334,9 +334,22 @@ Enable debug mode for troubleshooting:
 DEBUG=True
 LOG_LEVEL=DEBUG
 
+# Frontend logging (set log level for browser console)
+NEXT_PUBLIC_LOG_LEVEL=debug  # Options: error, warn, info, debug
+
 # Restart services
 make restart
 ```
+
+### Frontend Logging
+
+The frontend uses a centralized logging system that can be controlled via environment variables:
+
+- **Production**: Set `NEXT_PUBLIC_LOG_LEVEL=error` (default) for minimal logging
+- **Development**: Set `NEXT_PUBLIC_LOG_LEVEL=debug` for detailed logging
+- **Available levels**: `error`, `warn`, `info`, `debug`
+
+All logging is automatically disabled in production builds unless explicitly enabled.
 
 ## 📚 Development Workflow
 

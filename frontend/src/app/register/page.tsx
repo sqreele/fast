@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { logger } from '@/lib/logger';
 
 interface RegisterFormData {
   username: string;
@@ -126,7 +127,7 @@ export default function Register() {
       }, 2000);
 
     } catch (error) {
-      console.error('Registration error:', error);
+      logger.error('Registration error:', error);
       setError(error instanceof Error ? error.message : 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);

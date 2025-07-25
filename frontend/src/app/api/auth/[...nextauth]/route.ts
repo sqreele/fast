@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { User, Session } from "next-auth";
 import type { JWT } from "next-auth/jwt";
+import { logger } from "@/lib/logger";
 
 interface ExtendedUser extends User {
   token?: string;
@@ -17,14 +18,14 @@ const handler = NextAuth({
       },
       async authorize(credentials): Promise<ExtendedUser | null> {
         if (!credentials?.username || !credentials?.password) {
-          console.error('Missing credentials');
+          logger.error('Missing credentials');
           return null;
         }
 
         try {
           // Use internal service name for backend communication
           const backendUrl = process.env.BACKEND_URL || 'http://fastapi:8000';
-          console.log('Attempting login with backend:', backendUrl);
+          logger.debug('Attempting login with backend:', backendUrl);
           
           const res = await fetch(`${backendUrl}/api/v1/login`, {
             method: "POST",
@@ -38,16 +39,16 @@ const handler = NextAuth({
             })
           });
 
-          console.log('Login response status:', res.status);
+          logger.debug('Login response status:', res.status);
 
           if (!res.ok) {
             const errorText = await res.text();
-            console.error('Login failed:', res.status, res.statusText, errorText);
+            logger.error('Login failed:', res.status, res.statusText, errorText);
             return null;
           }
 
           const user = await res.json() as ExtendedUser;
-          console.log('Login successful for user:', user.name || user.email);
+          logger.debug('Login successful for user:', user.name || user.email);
           
           if (user && (user.token || user.id || user.email)) {
             return {
@@ -58,7 +59,7 @@ const handler = NextAuth({
             };
           }
         } catch (error) {
-          console.error("Auth error:", error);
+          logger.error("Auth error:", error);
         }
         return null;
       }

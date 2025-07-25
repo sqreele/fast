@@ -43,6 +43,7 @@ services:
       - NEXTAUTH_SECRET=dev-secret-key-not-for-production
       - BACKEND_URL=http://fastapi:8000
       - NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+      - NEXT_PUBLIC_LOG_LEVEL=debug
       - FAST_REFRESH=true
       - WATCHPACK_POLLING=true
     volumes:

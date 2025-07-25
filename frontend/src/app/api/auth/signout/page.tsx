@@ -3,6 +3,7 @@
 import { signOut } from 'next-auth/react';
 import { useState } from 'react';
 import Link from 'next/link';
+import { logger } from '@/lib/logger';
 
 export default function SignOut() {
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -12,7 +13,7 @@ export default function SignOut() {
     try {
       await signOut({ callbackUrl: '/' });
     } catch (error) {
-      console.error('Sign out error:', error);
+      logger.error('Sign out error:', error);
       setIsSigningOut(false);
     }
   };

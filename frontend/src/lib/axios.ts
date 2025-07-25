@@ -1,5 +1,6 @@
 import axios, { AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getSession } from 'next-auth/react';
+import { logger } from './logger';
 
 // Enhanced error interface
 interface ApiError extends Error {
@@ -30,7 +31,7 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${session.accessToken}`;
       }
     } catch (error) {
-      console.error('Error getting session:', error);
+      logger.error('Error getting session:', error);
     }
     return config;
   },
@@ -56,36 +57,36 @@ api.interceptors.response.use(
       
       switch (status) {
         case 401:
-          console.error('Unauthorized access - redirecting to login');
+          logger.error('Unauthorized access - redirecting to login');
           if (typeof window !== 'undefined') {
             window.location.href = '/api/auth/signin'; // Fixed typo in signin
           }
           break;
         case 403:
-          console.error('Forbidden access');
+          logger.error('Forbidden access');
           break;
         case 404:
-          console.error('Resource not found');
+          logger.error('Resource not found');
           break;
         case 422:
-          console.error('Validation error:', data);
+          logger.error('Validation error:', data);
           break;
         case 429:
-          console.error('Too many requests');
+          logger.error('Too many requests');
           break;
         default:
           if (status >= 500) {
-            console.error('Server error:', status);
+            logger.error('Server error:', status);
           }
       }
     } else if (error.request) {
       // Network error
       apiError.message = 'Network error - please check your connection';
-      console.error('Network error:', error.message);
+      logger.error('Network error:', error.message);
     } else {
       // Something else happened
       apiError.message = error.message || 'An unexpected error occurred';
-      console.error('Request setup error:', error.message);
+      logger.error('Request setup error:', error.message);
     }
     
     return Promise.reject(apiError);

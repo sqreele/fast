@@ -2,6 +2,7 @@
 
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { logger } from "@/lib/logger";
 
 interface SystemStatus {
   status: string;
@@ -19,18 +20,18 @@ export default function Dashboard() {
         setSystemStatus(data);
       }
     } catch (error) {
-      console.error('Health check failed:', error);
+      logger.error('Health check failed:', error);
     }
   };
 
   const fetchProjects = async () => {
     // Placeholder for future implementation
-    console.log('Fetching projects...');
+    logger.debug('Fetching projects...');
   };
 
   const fetchTickets = async () => {
     // Placeholder for future implementation
-    console.log('Fetching tickets...');
+    logger.debug('Fetching tickets...');
   };
 
   useEffect(() => {
