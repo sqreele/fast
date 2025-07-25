@@ -1,6 +1,6 @@
 FROM nginx:1.25-alpine
 
-# Install additional packages for security and monitoring
+# Install additional packages
 RUN apk add --no-cache \
     curl \
     openssl \
@@ -8,15 +8,15 @@ RUN apk add --no-cache \
     tzdata \
     bash
 
-# Create nginx user and set permissions
-RUN addgroup -g 1001 -S nginx || true && \
-    adduser -u 1001 -D -S -G nginx nginx || true
+# Create nginx user
+RUN addgroup -g 1001 -S nginx && \
+    adduser -u 1001 -D -S -G nginx nginx
 
-# Remove default nginx configuration
+# Remove default config
 RUN rm -f /etc/nginx/conf.d/default.conf \
     && rm -f /etc/nginx/nginx.conf
 
-# Create necessary directories
+# Create required directories and set permissions
 RUN mkdir -p \
     /var/cache/nginx/client_temp \
     /var/cache/nginx/proxy_temp \
@@ -27,33 +27,26 @@ RUN mkdir -p \
     /etc/nginx/ssl \
     /var/www/static \
     /etc/nginx/conf.d \
-    && chown -R nginx:nginx /var/cache/nginx \
-    && chown -R nginx:nginx /var/log/nginx \
-    && chown -R nginx:nginx /etc/nginx \
-    && chown -R nginx:nginx /var/www
+    && chown -R nginx:nginx /var/cache/nginx /var/log/nginx /etc/nginx /var/www
 
-# Copy custom nginx configurations
+# Copy nginx config files
 COPY nginx.conf /etc/nginx/nginx.conf
-COPY default.conf /etc/nginx/conf.d/default.conf
-COPY security-headers.conf /etc/nginx/conf.d/security-headers.conf
-COPY gzip.conf /etc/nginx/conf.d/gzip.conf
+COPY default.conf security-headers.conf gzip.conf /etc/nginx/conf.d/
 
-# Generate self-signed certificate for development
+# Generate self-signed cert for local HTTPS
 RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout /etc/nginx/ssl/nginx-selfsigned.key \
     -out /etc/nginx/ssl/nginx-selfsigned.crt \
-    -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
-
-# Set proper permissions for SSL certificates
-RUN chmod 600 /etc/nginx/ssl/nginx-selfsigned.key \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost" \
+    && chmod 600 /etc/nginx/ssl/nginx-selfsigned.key \
     && chmod 644 /etc/nginx/ssl/nginx-selfsigned.crt \
     && chown -R nginx:nginx /etc/nginx/ssl
 
-# Copy and setup startup script
+# Copy entrypoint
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Create log rotation configuration
+# Configure logrotate
 RUN echo '/var/log/nginx/*.log {\n\
     daily\n\
     missingok\n\
@@ -69,12 +62,12 @@ RUN echo '/var/log/nginx/*.log {\n\
     endscript\n\
 }' > /etc/logrotate.d/nginx
 
-# Expose ports
+# Expose HTTP & HTTPS
 EXPOSE 80 443
 
-# Health check
+# Health check (make sure /health exists or adjust accordingly)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost/health || exit 1
 
-# Start nginx (nginx will drop privileges automatically)
-CMD ["/docker-entrypoint.sh"] 
+# Start the container
+CMD ["/docker-entrypoint.sh"]
