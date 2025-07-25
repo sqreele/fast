@@ -42,8 +42,9 @@ export const useSystemStore = create<SystemState>()(
         try {
           const response = await systemApi.getHealth();
           set({ healthStatus: response.status, isLoading: false });
-        } catch (error: any) {
-          set({ error: error.message || 'Failed to check health', isLoading: false });
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to check health';
+          set({ error: errorMessage, isLoading: false });
         }
       },
       
@@ -52,8 +53,9 @@ export const useSystemStore = create<SystemState>()(
         try {
           const response = await systemApi.maintenance(action);
           set({ maintenanceStatus: response.data.status, isLoading: false });
-        } catch (error: any) {
-          set({ error: error.message || 'Failed to perform maintenance', isLoading: false });
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to perform maintenance';
+          set({ error: errorMessage, isLoading: false });
         }
       },
       
@@ -62,8 +64,9 @@ export const useSystemStore = create<SystemState>()(
         try {
           const response = await systemApi.upscale(resource, target);
           set({ upscaleStatus: response.data.status, isLoading: false });
-        } catch (error: any) {
-          set({ error: error.message || 'Failed to perform upscale', isLoading: false });
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to perform upscale';
+          set({ error: errorMessage, isLoading: false });
         }
       },
     }),
