@@ -25,8 +25,26 @@ services:
       dockerfile: Dockerfile.dev
     environment:
       - NODE_ENV=development
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your-nextauth-secret-key-change-in-production
+      - BACKEND_URL=http://fastapi:8000
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
     volumes:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
-    user: "1001:1001"
+      - nextjs_cache:/app/.next/cache
+    # Remove the user override to let the Dockerfile handle it
+    # user: "1001:1001"  # Comment this out
+    command: >
+      sh -c "
+      # Fix permissions for mounted volumes
+      sudo chown -R nextjs:nodejs /app &&
+      sudo chmod -R 775 /app &&
+      # Ensure Next.js directories exist with correct permissions
+      mkdir -p .next .next/cache .next/server .next/static &&
+      touch next-env.d.ts &&
+      npm run dev"
+
+volumes:
+  nextjs_cache:
