@@ -4,9 +4,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
-      args:
-        USER_ID: 1000
-        GROUP_ID: 1000
     environment:
       - DEBUG=True
       - LOG_LEVEL=INFO
@@ -15,7 +12,6 @@ services:
       - ./backend:/app
       - /app/__pycache__
       - /app/.pytest_cache
-    user: "1000:1000"
     command: >
       bash -c "
       echo 'Waiting for database...' &&
@@ -27,13 +23,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-      args:
-        USER_ID: 1000
-        GROUP_ID: 1000
     environment:
       - NODE_ENV=development
     volumes:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
-    user: "1000:1000" 
