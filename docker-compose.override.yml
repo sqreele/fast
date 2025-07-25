@@ -1,24 +1,39 @@
 version: '3.8'
 services:
   fastapi:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+      args:
+        USER_ID: 1000
+        GROUP_ID: 1000
     environment:
       - DEBUG=True
       - LOG_LEVEL=INFO
+      - DATABASE_URL=postgresql://pm_user:pm_password@pm_postgres_db:5432/pm_database
     volumes:
       - ./backend:/app
       - /app/__pycache__
       - /app/.pytest_cache
+    user: "1000:1000"
     command: >
-      bash -c "echo 'Waiting for database...' &&
-               python init_db.py &&
-               echo 'Starting FastAPI application in development mode...' &&
-               uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+      bash -c "
+      echo 'Waiting for database...' &&
+      sleep 10 &&
+      echo 'Starting FastAPI application in development mode...' &&
+      uvicorn main:app --host 0.0.0.0 --port 8000"
   
   frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+      args:
+        USER_ID: 1000
+        GROUP_ID: 1000
     environment:
       - NODE_ENV=development
-    command: npm run dev
     volumes:
       - ./frontend:/app
       - /app/node_modules
-      - /app/.next 
+      - /app/.next
+    user: "1000:1000" 

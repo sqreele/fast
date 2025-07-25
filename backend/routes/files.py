@@ -31,9 +31,13 @@ ALLOWED_EXTENSIONS = {
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 
 # Ensure upload directory exists
-UPLOAD_DIR.mkdir(exist_ok=True)
-for subdir in ['images', 'documents', 'videos', 'audio', 'temp']:
-    (UPLOAD_DIR / subdir).mkdir(exist_ok=True)
+try:
+    UPLOAD_DIR.mkdir(exist_ok=True)
+    for subdir in ['images', 'documents', 'videos', 'audio', 'temp']:
+        (UPLOAD_DIR / subdir).mkdir(exist_ok=True)
+except PermissionError:
+    # Directory creation will be handled at runtime if needed
+    pass
 
 def get_file_category(filename: str) -> str:
     """Determine file category based on extension"""
