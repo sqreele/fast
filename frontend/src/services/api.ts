@@ -71,6 +71,32 @@ export const authApi = {
   logout: async () => {
     const response: AxiosResponse<ApiResponse<null>> = await api.post('/api/v1/auth/logout');
     return response.data;
+  },
+
+  changePassword: async (passwordData: { current_password: string; new_password: string }) => {
+    const response: AxiosResponse<ApiResponse<null>> = 
+      await api.post('/api/v1/auth/change-password', passwordData);
+    return response.data;
+  },
+
+  verifyToken: async () => {
+    const response: AxiosResponse<ApiResponse<null>> = await api.get('/api/v1/auth/verify-token');
+    return response.data;
+  },
+
+  register: async (userData: {
+    username: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    phone?: string;
+    role: string;
+    password: string;
+    is_active?: boolean;
+  }) => {
+    const response: AxiosResponse<ApiResponse<User>> = 
+      await api.post('/api/v1/auth/register', userData);
+    return response.data;
   }
 };
 

@@ -8,6 +8,7 @@ from models.models import (
     WorkOrder, Notification, MaintenanceLog, Job
 )
 from database import engine
+import sqlalchemy
 
 # User Admin View
 class UserAdmin(ModelView, model=User):
@@ -22,6 +23,42 @@ class UserAdmin(ModelView, model=User):
     can_edit = True
     can_delete = True
     can_view_details = True
+    
+    def scaffold_list_query(self, *args, **kwargs):
+        """Optimize query to include property access information"""
+        query = super().scaffold_list_query(*args, **kwargs)
+        query = query.options(
+            sqlalchemy.orm.joinedload(User.property_access).joinedload(UserPropertyAccess.property)
+        )
+        return query
+    
+    def scaffold_form(self):
+        """Customize the form to show property information"""
+        form = super().scaffold_form()
+        return form
+    
+    def scaffold_detail_form(self):
+        """Customize the detail form to show property information"""
+        form = super().scaffold_detail_form()
+        return form
+    
+    def get_properties_display(self, obj):
+        """Get properties for display in admin"""
+        try:
+            if hasattr(obj, 'property_access') and obj.property_access:
+                property_info = []
+                for access in obj.property_access:
+                    if hasattr(access, 'property') and access.property:
+                        property_info.append(f"{access.property.name} ({access.access_level})")
+                return ", ".join(property_info) if property_info else "No properties"
+            return "No properties"
+        except Exception as e:
+            return f"Error: {str(e)}"
+    
+    def scaffold_detail_form(self):
+        """Customize the detail form to show property information"""
+        form = super().scaffold_detail_form()
+        return form
 
 # Property Admin View
 class PropertyAdmin(ModelView, model=Property):

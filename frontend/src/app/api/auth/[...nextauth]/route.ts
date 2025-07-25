@@ -26,7 +26,7 @@ const handler = NextAuth({
           const backendUrl = process.env.BACKEND_URL || 'http://fastapi:8000';
           console.log('Attempting login with backend:', backendUrl);
           
-          const res = await fetch(`${backendUrl}/api/v1/login`, {
+          const res = await fetch(`${backendUrl}/api/v1/auth/login`, {
             method: "POST",
             headers: { 
               "Content-Type": "application/json",

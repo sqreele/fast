@@ -42,7 +42,7 @@ NODE_ENV=production
 1. User clicks "Login" on the dashboard
 2. User is redirected to `/api/auth/siginin`
 3. User enters credentials
-4. NextAuth.js sends POST request to backend `/api/v1/login`
+4. NextAuth.js sends POST request to backend `/api/v1/auth/login`
 5. Backend validates credentials and returns user data with token
 6. NextAuth.js creates session with JWT strategy
 7. User is redirected back to dashboard
@@ -113,7 +113,7 @@ docker-compose logs fastapi
 ## Backend Requirements
 
 The backend must provide:
-- `POST /api/v1/login` endpoint
+- `POST /api/v1/auth/login` endpoint
 - Accept JSON with `username` and `password`
 - Return user object with `token` field on success
 - Return appropriate HTTP status codes

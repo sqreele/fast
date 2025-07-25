@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -13,15 +13,28 @@ interface RegisterFormData {
   role: string;
   password: string;
   confirmPassword: string;
+  property_ids: number[];
 }
 
-
+interface DebugLog {
+  timestamp: string;
+  type: 'info' | 'error' | 'warning' | 'success';
+  message: string;
+  data?: any;
+}
 
 export default function Register() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [properties, setProperties] = useState<Array<{id: number, name: string}>>([]);
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
+  const [networkStatus, setNetworkStatus] = useState({
+    propertiesEndpoint: 'idle',
+    registrationEndpoint: 'idle'
+  });
   const [formData, setFormData] = useState<RegisterFormData>({
     username: '',
     email: '',
@@ -30,15 +43,28 @@ export default function Register() {
     phone: '',
     role: 'TECHNICIAN',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    property_ids: []
   });
 
   const roles = [
     { value: 'TECHNICIAN', label: 'Technician' },
+    { value: 'SUPERVISOR', label: 'Supervisor' },
     { value: 'MANAGER', label: 'Manager' },
-    { value: 'ADMIN', label: 'Admin' },
-    { value: 'USER', label: 'User' }
+    { value: 'ADMIN', label: 'Admin' }
   ];
+
+  // Debug logging function
+  const addDebugLog = (type: DebugLog['type'], message: string, data?: any) => {
+    const log: DebugLog = {
+      timestamp: new Date().toISOString(),
+      type,
+      message,
+      data
+    };
+    setDebugLogs(prev => [...prev, log]);
+    console.log(`[DEBUG] ${type.toUpperCase()}: ${message}`, data || '');
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -46,53 +72,132 @@ export default function Register() {
       ...prev,
       [name]: value
     }));
+    
+    // Debug form changes
+    addDebugLog('info', `Form field changed: ${name}`, { value, fieldType: e.target.type });
+    
     // Clear errors when user starts typing
     if (error) setError('');
   };
 
+  const handlePropertyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const propertyId = parseInt(e.target.value);
+    const isChecked = e.target.checked;
+    
+    setFormData(prev => ({
+      ...prev,
+      property_ids: isChecked 
+        ? [...prev.property_ids, propertyId]
+        : prev.property_ids.filter(id => id !== propertyId)
+    }));
+
+    addDebugLog('info', `Property selection changed`, { 
+      propertyId, 
+      isChecked, 
+      currentSelection: isChecked 
+        ? [...formData.property_ids, propertyId]
+        : formData.property_ids.filter(id => id !== propertyId)
+    });
+  };
+
+  // Fetch available properties on component mount
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        addDebugLog('info', 'Fetching properties from API...');
+        setNetworkStatus(prev => ({ ...prev, propertiesEndpoint: 'loading' }));
+        
+        const startTime = Date.now();
+        console.log('Making API call to /api/v1/properties/public');
+        const response = await fetch('/api/v1/properties/public');
+        const endTime = Date.now();
+        
+        console.log('API response:', response.status, response.statusText);
+        addDebugLog('info', `Properties API response received`, {
+          status: response.status,
+          statusText: response.statusText,
+          responseTime: `${endTime - startTime}ms`
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Properties data:', data);
+          setProperties(data);
+          addDebugLog('success', `Properties loaded successfully`, {
+            count: data.length,
+            properties: data.map((p: any) => ({ id: p.id, name: p.name }))
+          });
+          setNetworkStatus(prev => ({ ...prev, propertiesEndpoint: 'success' }));
+        } else {
+          const errorText = await response.text();
+          console.error('Properties API error:', response.status, errorText);
+          addDebugLog('error', `Properties API error`, {
+            status: response.status,
+            statusText: response.statusText,
+            errorText
+          });
+          setNetworkStatus(prev => ({ ...prev, propertiesEndpoint: 'error' }));
+        }
+      } catch (error) {
+        console.error('Error fetching properties:', error);
+        addDebugLog('error', 'Error fetching properties', { error: error instanceof Error ? error.message : error });
+        setNetworkStatus(prev => ({ ...prev, propertiesEndpoint: 'error' }));
+      }
+    };
+    
+    fetchProperties();
+  }, []);
+
   const validateForm = (): boolean => {
+    addDebugLog('info', 'Starting form validation...');
+    
+    const validationErrors: string[] = [];
+    
     if (!formData.username.trim()) {
-      setError('Username is required');
-      return false;
+      validationErrors.push('Username is required');
     }
     if (!formData.email.trim()) {
-      setError('Email is required');
-      return false;
+      validationErrors.push('Email is required');
     }
     if (!formData.email.includes('@')) {
-      setError('Please enter a valid email address');
-      return false;
+      validationErrors.push('Please enter a valid email address');
     }
     if (!formData.first_name.trim()) {
-      setError('First name is required');
-      return false;
+      validationErrors.push('First name is required');
     }
     if (!formData.last_name.trim()) {
-      setError('Last name is required');
-      return false;
+      validationErrors.push('Last name is required');
     }
     if (!formData.password) {
-      setError('Password is required');
-      return false;
+      validationErrors.push('Password is required');
     }
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      return false;
+      validationErrors.push('Password must be at least 6 characters long');
     }
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      validationErrors.push('Passwords do not match');
+    }
+
+    if (validationErrors.length > 0) {
+      addDebugLog('warning', 'Form validation failed', { errors: validationErrors });
+      setError(validationErrors[0]);
       return false;
     }
+
+    addDebugLog('success', 'Form validation passed');
     return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    addDebugLog('info', 'Form submission started');
+    
     if (!validateForm()) return;
     
     setIsLoading(true);
     setError('');
+    setNetworkStatus(prev => ({ ...prev, registrationEndpoint: 'loading' }));
 
     try {
       const registrationData = {
@@ -103,9 +208,17 @@ export default function Register() {
         phone: formData.phone.trim(),
         role: formData.role,
         password: formData.password,
-        is_active: true
+        is_active: true,
+        property_ids: formData.property_ids
       };
 
+      addDebugLog('info', 'Preparing registration data', {
+        ...registrationData,
+        password: '[HIDDEN]',
+        property_ids: registrationData.property_ids
+      });
+
+      const startTime = Date.now();
       const response = await fetch('/api/v1/auth/register', {
         method: 'POST',
         headers: {
@@ -113,24 +226,73 @@ export default function Register() {
         },
         body: JSON.stringify(registrationData)
       });
+      const endTime = Date.now();
+
+      addDebugLog('info', 'Registration API response received', {
+        status: response.status,
+        statusText: response.statusText,
+        responseTime: `${endTime - startTime}ms`,
+        headers: Object.fromEntries(response.headers.entries())
+      });
 
       const data = await response.json();
+      addDebugLog('info', 'Registration response data', data);
 
       if (!response.ok) {
-        throw new Error(data.message || `Registration failed: ${response.status}`);
+        const errorMessage = data.detail || data.message || `Registration failed: ${response.status}`;
+        addDebugLog('error', 'Registration failed', {
+          status: response.status,
+          errorMessage,
+          responseData: data
+        });
+        throw new Error(errorMessage);
       }
 
+      addDebugLog('success', 'Registration successful', { responseData: data });
       setSuccess('Registration successful! Redirecting to login...');
+      setNetworkStatus(prev => ({ ...prev, registrationEndpoint: 'success' }));
+      
       setTimeout(() => {
+        addDebugLog('info', 'Redirecting to login page');
         router.push('/api/auth/signin?message=Registration successful, please sign in');
       }, 2000);
 
     } catch (error) {
-      console.error('Registration error:', error);
-      setError(error instanceof Error ? error.message : 'Registration failed. Please try again.');
+      addDebugLog('error', 'Registration error caught', { 
+        error: error instanceof Error ? error.message : error 
+      });
+      const errorMessage = error instanceof Error ? error.message : 'Registration failed. Please try again.';
+      setError(errorMessage);
+      setNetworkStatus(prev => ({ ...prev, registrationEndpoint: 'error' }));
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const clearDebugLogs = () => {
+    setDebugLogs([]);
+    addDebugLog('info', 'Debug logs cleared');
+  };
+
+  const exportDebugLogs = () => {
+    const debugData = {
+      timestamp: new Date().toISOString(),
+      formData: { ...formData, password: '[HIDDEN]', confirmPassword: '[HIDDEN]' },
+      networkStatus,
+      logs: debugLogs
+    };
+    
+    const blob = new Blob([JSON.stringify(debugData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `registration-debug-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    addDebugLog('info', 'Debug logs exported');
   };
 
   if (success) {
@@ -164,7 +326,102 @@ export default function Register() {
               sign in to your existing account
             </Link>
           </p>
+          
+          {/* Debug Toggle */}
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => setShowDebug(!showDebug)}
+              className="text-xs text-gray-500 hover:text-gray-700 underline"
+            >
+              {showDebug ? 'Hide Debug Panel' : 'Show Debug Panel'}
+            </button>
+          </div>
         </div>
+
+        {/* Debug Panel */}
+        {showDebug && (
+          <div className="bg-gray-100 border border-gray-300 rounded-md p-4 space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-semibold text-gray-700">Debug Panel</h3>
+              <div className="space-x-2">
+                <button
+                  onClick={clearDebugLogs}
+                  className="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                >
+                  Clear Logs
+                </button>
+                <button
+                  onClick={exportDebugLogs}
+                  className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
+                >
+                  Export Logs
+                </button>
+              </div>
+            </div>
+            
+            {/* Network Status */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-white p-2 rounded">
+                <div className="font-medium">Properties API:</div>
+                <div className={`inline-block px-1 rounded text-white ${
+                  networkStatus.propertiesEndpoint === 'success' ? 'bg-green-500' :
+                  networkStatus.propertiesEndpoint === 'error' ? 'bg-red-500' :
+                  networkStatus.propertiesEndpoint === 'loading' ? 'bg-yellow-500' : 'bg-gray-500'
+                }`}>
+                  {networkStatus.propertiesEndpoint}
+                </div>
+              </div>
+              <div className="bg-white p-2 rounded">
+                <div className="font-medium">Registration API:</div>
+                <div className={`inline-block px-1 rounded text-white ${
+                  networkStatus.registrationEndpoint === 'success' ? 'bg-green-500' :
+                  networkStatus.registrationEndpoint === 'error' ? 'bg-red-500' :
+                  networkStatus.registrationEndpoint === 'loading' ? 'bg-yellow-500' : 'bg-gray-500'
+                }`}>
+                  {networkStatus.registrationEndpoint}
+                </div>
+              </div>
+            </div>
+
+            {/* Form Data Summary */}
+            <div className="bg-white p-2 rounded text-xs">
+              <div className="font-medium mb-1">Form Data:</div>
+              <div className="space-y-1">
+                <div>Username: {formData.username || '[empty]'}</div>
+                <div>Email: {formData.email || '[empty]'}</div>
+                <div>Name: {formData.first_name} {formData.last_name}</div>
+                <div>Role: {formData.role}</div>
+                <div>Properties: {formData.property_ids.length} selected</div>
+              </div>
+            </div>
+
+            {/* Debug Logs */}
+            <div className="bg-white p-2 rounded">
+              <div className="font-medium mb-2 text-xs">Debug Logs ({debugLogs.length}):</div>
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {debugLogs.slice(-10).map((log, index) => (
+                  <div key={index} className="text-xs border-l-2 pl-2" style={{
+                    borderColor: 
+                      log.type === 'error' ? '#ef4444' :
+                      log.type === 'warning' ? '#f59e0b' :
+                      log.type === 'success' ? '#10b981' : '#3b82f6'
+                  }}>
+                    <div className="font-mono text-gray-500">
+                      {new Date(log.timestamp).toLocaleTimeString()}
+                    </div>
+                    <div className={`font-medium ${
+                      log.type === 'error' ? 'text-red-600' :
+                      log.type === 'warning' ? 'text-yellow-600' :
+                      log.type === 'success' ? 'text-green-600' : 'text-blue-600'
+                    }`}>
+                      {log.message}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -319,6 +576,43 @@ export default function Register() {
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Confirm password"
               />
+            </div>
+
+            {/* Property Access */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Property Access
+              </label>
+              {properties.length > 0 ? (
+                <div className="space-y-2 max-h-32 overflow-y-auto border border-gray-300 rounded-md p-3">
+                  {properties.map((property) => (
+                    <div key={property.id} className="flex items-center">
+                      <input
+                        id={`property-${property.id}`}
+                        name="property_ids"
+                        type="checkbox"
+                        value={property.id}
+                        checked={formData.property_ids.includes(property.id)}
+                        onChange={handlePropertyChange}
+                        disabled={isLoading}
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor={`property-${property.id}`} className="ml-2 block text-sm text-gray-900">
+                        {property.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="border border-gray-300 rounded-md p-3 bg-gray-50">
+                  <p className="text-sm text-gray-500">
+                    {properties.length === 0 ? 'Loading properties...' : 'No properties available'}
+                  </p>
+                </div>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                Select properties this user should have access to
+              </p>
             </div>
           </div>
 

@@ -23,7 +23,7 @@ services:
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=dev-secret-key
       - BACKEND_URL=http://fastapi:8000
-      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+      - NEXT_PUBLIC_BACKEND_URL=http://fastapi:8000/api/v1
     volumes:
       - ./frontend:/app:rw
       - /app/node_modules
