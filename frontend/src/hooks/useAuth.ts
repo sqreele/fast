@@ -8,7 +8,7 @@ export function useAuth(requireAuth: boolean = false) {
 
   useEffect(() => {
     if (requireAuth && status === 'unauthenticated') {
-      router.push('/auth/signin');
+      router.push('/api/auth/signin');
     }
   }, [requireAuth, status, router]);
 
@@ -17,10 +17,37 @@ export function useAuth(requireAuth: boolean = false) {
     status,
     isLoading: status === 'loading',
     isAuthenticated: status === 'authenticated',
-    user: session?.user
+    user: session?.user,
+    role: session?.user?.role,
+    accessToken: session?.accessToken
   };
 }
 
 export function useRequireAuth() {
   return useAuth(true);
+}
+
+export function useRole() {
+  const { role, isAuthenticated } = useAuth();
+  
+  const hasRole = (requiredRole: string) => {
+    return isAuthenticated && role === requiredRole;
+  };
+  
+  const hasAnyRole = (requiredRoles: string[]) => {
+    return isAuthenticated && role && requiredRoles.includes(role);
+  };
+  
+  const isAdmin = () => hasRole('ADMIN');
+  const isManager = () => hasRole('MANAGER');
+  const isTechnician = () => hasRole('TECHNICIAN');
+  
+  return {
+    role,
+    hasRole,
+    hasAnyRole,
+    isAdmin,
+    isManager,
+    isTechnician
+  };
 }
