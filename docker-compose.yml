@@ -1,9 +1,6 @@
-# Remove version field - it's obsolete in modern Docker Compose
 services:
   fastapi:
-    build: 
-      context: ./backend
-      target: production
+    build: ./backend
     container_name: fastapi_app
     restart: unless-stopped
     environment:
@@ -13,31 +10,19 @@ services:
       pm_postgres_db:
         condition: service_healthy
     volumes:
-      - ./uploads:/app/uploads:rw
+      - ./backend:/app
+      - ./uploads:/app/uploads
     ports:
       - "8000:8000"
-    networks:
-      - app_network
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: '0.5'
-        reservations:
-          memory: 256M
-          cpus: '0.25'
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    read_only: true
-    tmpfs:
-      - /tmp:noexec,nosuid,size=100m
 
   pm_postgres_db:
-    image: postgres:16-alpine
+    image: postgres:15
     container_name: pm_postgres_db
     restart: unless-stopped
     environment:
@@ -46,33 +31,27 @@ services:
       POSTGRES_PASSWORD: pm_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "15432:5432"
-    networks:
-      - app_network
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '0.5'
-        reservations:
-          memory: 512M
-          cpus: '0.25'
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pm_user -d pm_database"]
       interval: 10s
       timeout: 5s
       retries: 5
-    read_only: true
-    tmpfs:
-      - /tmp:noexec,nosuid,size=100m
-      - /var/run/postgresql:noexec,nosuid,size=100m
+
+  adminer:
+    image: adminer:latest
+    container_name: pm_adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    depends_on:
+      pm_postgres_db:
+        condition: service_healthy
 
   frontend:
-    build: 
-      context: ./frontend
-      target: runner
+    build: ./frontend
     container_name: nextjs_frontend
     restart: unless-stopped
     environment:
@@ -85,25 +64,12 @@ services:
        - "3000:3000"
     depends_on:
       - fastapi
-    networks:
-      - app_network
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: '0.5'
-        reservations:
-          memory: 256M
-          cpus: '0.25'
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 40s
-    read_only: true
-    tmpfs:
-      - /tmp:noexec,nosuid,size=100m
 
   nginx:
     build: ./nginx
@@ -119,34 +85,12 @@ services:
         condition: service_healthy
     volumes:
       - ./nginx/ssl:/etc/nginx/ssl:ro
-    networks:
-      - app_network
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: '0.25'
-        reservations:
-          memory: 128M
-          cpus: '0.1'
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 90s
-    read_only: true
-    tmpfs:
-      - /var/cache/nginx:noexec,nosuid,size=100m
-      - /var/run:noexec,nosuid,size=100m
 
 volumes:
   postgres_data:
-    driver: local
-
-networks:
-  app_network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
