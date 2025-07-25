@@ -9,35 +9,26 @@ RUN apk add --no-cache curl
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 
-# Create user and group with better error handling
-RUN set -eux; \
-    # Remove existing user/group if they exist with the same IDs
-    if getent group ${GROUP_ID} > /dev/null 2>&1; then \
-        existing_group=$(getent group ${GROUP_ID} | cut -d: -f1); \
-        if [ "$existing_group" != "nodejs" ]; then \
-            delgroup "$existing_group" || true; \
-        fi; \
-    fi; \
-    if getent passwd ${USER_ID} > /dev/null 2>&1; then \
-        existing_user=$(getent passwd ${USER_ID} | cut -d: -f1); \
-        if [ "$existing_user" != "nextjs" ]; then \
-            deluser "$existing_user" || true; \
-        fi; \
-    fi; \
-    # Create group and user
-    addgroup -g ${GROUP_ID} -S nodejs || true; \
-    adduser -u ${USER_ID} -S nextjs -G nodejs || true
+# Create user and group
+RUN addgroup -g ${GROUP_ID} -S nodejs && \
+    adduser -u ${USER_ID} -S nextjs -G nodejs
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
+# Copy package.json and package-lock.json first
+COPY --chown=nextjs:nodejs package*.json ./
 
-# Install dependencies
+# Install dependencies as nextjs user
+USER nextjs
 RUN npm ci
 
-# Change ownership of the app directory
-RUN chown -R nextjs:nodejs /app
+# Copy the rest of the application code
+COPY --chown=nextjs:nodejs . .
 
-# Switch to the non-root user
+# Ensure nextjs user owns everything in /app
+USER root
+RUN chown -R nextjs:nodejs /app && \
+    chmod -R 755 /app
+
+# Switch back to nextjs user
 USER nextjs
 
 EXPOSE 3000
