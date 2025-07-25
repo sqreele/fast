@@ -2,16 +2,18 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install curl for health checks
+# Install dependencies and create user in separate steps for better reliability
 RUN apk add --no-cache curl
 
 # Get current user ID to avoid permission issues
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 
-# Create a user that matches the host user to avoid permission issues
-RUN addgroup -g ${GROUP_ID} -S nodejs && \
-    adduser -u ${USER_ID} -S nextjs -G nodejs
+# Create group first
+RUN addgroup -g ${GROUP_ID} -S nodejs
+
+# Create user and add to group
+RUN adduser -u ${USER_ID} -S -G nodejs nextjs
 
 # Copy package.json and package-lock.json
 COPY package*.json ./
