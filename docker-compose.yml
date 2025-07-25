@@ -1,42 +1,23 @@
-version: '3.8'
-
-networks:
-  pm_network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/24
-
+# Remove version field - it's obsolete in modern Docker Compose
 services:
   fastapi:
     build: 
       context: ./backend
-      dockerfile: Dockerfile
       target: production
     container_name: fastapi_app
     restart: unless-stopped
     environment:
       - DATABASE_URL=postgresql://pm_user:pm_password@pm_postgres_db:5432/pm_database
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here-change-in-production}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - DEBUG=${DEBUG:-False}
-      - PYTHONDONTWRITEBYTECODE=1
-      - PYTHONUNBUFFERED=1
+      - SECRET_KEY=your-secret-key-here
     depends_on:
       pm_postgres_db:
         condition: service_healthy
     volumes:
-      - uploads_data:/app/uploads
-    expose:
-      - "8000"
+      - ./uploads:/app/uploads:rw
+    ports:
+      - "8000:8000"
     networks:
-      - pm_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      - app_network
     deploy:
       resources:
         limits:
@@ -45,12 +26,15 @@ services:
         reservations:
           memory: 256M
           cpus: '0.25'
-    security_opt:
-      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     read_only: true
     tmpfs:
-      - /tmp
-      - /app/tmp
+      - /tmp:noexec,nosuid,size=100m
 
   pm_postgres_db:
     image: postgres:16-alpine
@@ -59,24 +43,14 @@ services:
     environment:
       POSTGRES_DB: pm_database
       POSTGRES_USER: pm_user
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pm_password}
-      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
-      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_PASSWORD: pm_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    expose:
-      - "5432"
     ports:
-      - "127.0.0.1:15432:5432"  # Bind to localhost only for security
+      - "15432:5432"
     networks:
-      - pm_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pm_user -d pm_database"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      - app_network
     deploy:
       resources:
         limits:
@@ -85,83 +59,34 @@ services:
         reservations:
           memory: 512M
           cpus: '0.25'
-    security_opt:
-      - no-new-privileges:true
-    user: postgres
-    command: >
-      postgres
-      -c shared_preload_libraries=pg_stat_statements
-      -c pg_stat_statements.track=all
-      -c max_connections=100
-      -c shared_buffers=256MB
-      -c effective_cache_size=1GB
-      -c maintenance_work_mem=64MB
-      -c checkpoint_completion_target=0.9
-      -c wal_buffers=16MB
-      -c default_statistics_target=100
-      -c random_page_cost=1.1
-      -c effective_io_concurrency=200
-      -c work_mem=4MB
-      -c min_wal_size=1GB
-      -c max_wal_size=4GB
-
-  adminer:
-    image: adminer:4-standalone
-    container_name: pm_adminer
-    restart: unless-stopped
-    expose:
-      - "8080"
-    ports:
-      - "127.0.0.1:8081:8080"  # Bind to localhost only for security
-    depends_on:
-      pm_postgres_db:
-        condition: service_healthy
-    networks:
-      - pm_network
-    environment:
-      ADMINER_DEFAULT_SERVER: pm_postgres_db
-      ADMINER_DESIGN: pepa-linha-dark
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-          cpus: '0.1'
-        reservations:
-          memory: 64M
-          cpus: '0.05'
-    security_opt:
-      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pm_user -d pm_database"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:noexec,nosuid,size=100m
+      - /var/run/postgresql:noexec,nosuid,size=100m
 
   frontend:
     build: 
       context: ./frontend
-      dockerfile: Dockerfile
-      target: production
+      target: runner
     container_name: nextjs_frontend
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-your-nextauth-secret-key-change-in-production}
+      - NEXTAUTH_URL=http://localhost
+      - NEXTAUTH_SECRET=your-nextauth-secret-key-change-in-production
       - BACKEND_URL=http://fastapi:8000
-      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://localhost/api/v1}
-      - NEXT_TELEMETRY_DISABLED=1
-    expose:
-      - "3000"
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost/api/v1
+    ports:
+       - "3000:3000"
     depends_on:
-      fastapi:
-        condition: service_healthy
+      - fastapi
     networks:
-      - pm_network
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
+      - app_network
     deploy:
       resources:
         limits:
@@ -170,17 +95,18 @@ services:
         reservations:
           memory: 256M
           cpus: '0.25'
-    security_opt:
-      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
     read_only: true
     tmpfs:
-      - /tmp
-      - /app/.next/cache
+      - /tmp:noexec,nosuid,size=100m
 
   nginx:
-    build: 
-      context: ./nginx
-      dockerfile: Dockerfile
+    build: ./nginx
     container_name: pm_nginx
     restart: unless-stopped
     ports:
@@ -193,16 +119,8 @@ services:
         condition: service_healthy
     volumes:
       - ./nginx/ssl:/etc/nginx/ssl:ro
-      - nginx_logs:/var/log/nginx
-      - nginx_cache:/var/cache/nginx
     networks:
-      - pm_network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 90s
+      - app_network
     deploy:
       resources:
         limits:
@@ -211,21 +129,24 @@ services:
         reservations:
           memory: 128M
           cpus: '0.1'
-    security_opt:
-      - no-new-privileges:true
-    cap_add:
-      - CHOWN
-      - SETGID
-      - SETUID
-    cap_drop:
-      - ALL
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:noexec,nosuid,size=100m
+      - /var/run:noexec,nosuid,size=100m
 
 volumes:
   postgres_data:
     driver: local
-  uploads_data:
-    driver: local
-  nginx_logs:
-    driver: local
-  nginx_cache:
-    driver: local
+
+networks:
+  app_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
