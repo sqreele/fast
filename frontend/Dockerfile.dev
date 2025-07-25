@@ -8,23 +8,20 @@ RUN apk add --no-cache curl
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 --ingroup nodejs nextjs
 
-# Copy package files first
-COPY --chown=nextjs:nodejs package*.json ./
+# Copy package files and change ownership
+COPY package*.json ./
+RUN chown -R nextjs:nodejs /app
 
-# Install dependencies as nextjs user
-USER nextjs
+# Install dependencies as root (npm ci needs write access)
 RUN npm ci
 
-# Switch back to root to create directories and set permissions
-USER root
-
-# Create necessary directories and files with proper permissions
+# Create necessary directories and set permissions
 RUN mkdir -p .next .next/cache .next/server .next/static && \
     touch next-env.d.ts && \
     chown -R nextjs:nodejs /app && \
     chmod -R 775 /app
 
-# Switch to non-root user
+# Switch to non-root user for runtime
 USER nextjs
 
 EXPOSE 3000
