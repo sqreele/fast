@@ -2,18 +2,31 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies and create user in separate steps for better reliability
+# Install curl for health checks
 RUN apk add --no-cache curl
 
 # Get current user ID to avoid permission issues
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 
-# Create group first
-RUN addgroup -g ${GROUP_ID} -S nodejs
-
-# Create user and add to group
-RUN adduser -u ${USER_ID} -S -G nodejs nextjs
+# Create user and group with better error handling
+RUN set -eux; \
+    # Remove existing user/group if they exist with the same IDs
+    if getent group ${GROUP_ID} > /dev/null 2>&1; then \
+        existing_group=$(getent group ${GROUP_ID} | cut -d: -f1); \
+        if [ "$existing_group" != "nodejs" ]; then \
+            delgroup "$existing_group" || true; \
+        fi; \
+    fi; \
+    if getent passwd ${USER_ID} > /dev/null 2>&1; then \
+        existing_user=$(getent passwd ${USER_ID} | cut -d: -f1); \
+        if [ "$existing_user" != "nextjs" ]; then \
+            deluser "$existing_user" || true; \
+        fi; \
+    fi; \
+    # Create group and user
+    addgroup -g ${GROUP_ID} -S nodejs || true; \
+    adduser -u ${USER_ID} -S nextjs -G nodejs || true
 
 # Copy package.json and package-lock.json
 COPY package*.json ./
