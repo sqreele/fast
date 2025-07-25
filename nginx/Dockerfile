@@ -49,18 +49,9 @@ RUN chmod 600 /etc/nginx/ssl/nginx-selfsigned.key \
     && chmod 644 /etc/nginx/ssl/nginx-selfsigned.crt \
     && chown -R nginx:nginx /etc/nginx/ssl
 
-# Create startup script
-RUN echo '#!/bin/bash\n\
-set -e\n\
-\n\
-echo "=== Nginx Startup ==="\n\
-echo "Testing nginx configuration..."\n\
-nginx -t\n\
-\n\
-echo "Starting nginx..."\n\
-exec nginx -g "daemon off;"\n\
-' > /docker-entrypoint.sh && \
-    chmod +x /docker-entrypoint.sh
+# Copy and setup startup script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Create log rotation configuration
 RUN echo '/var/log/nginx/*.log {\n\
@@ -78,9 +69,6 @@ RUN echo '/var/log/nginx/*.log {\n\
     endscript\n\
 }' > /etc/logrotate.d/nginx
 
-# Switch to non-root user
-USER nginx
-
 # Expose ports
 EXPOSE 80 443
 
@@ -88,5 +76,5 @@ EXPOSE 80 443
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost/health || exit 1
 
-# Start nginx
+# Start nginx (nginx will drop privileges automatically)
 CMD ["/docker-entrypoint.sh"] 
