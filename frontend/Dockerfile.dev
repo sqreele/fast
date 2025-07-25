@@ -5,31 +5,11 @@ WORKDIR /app
 # Install curl for health checks
 RUN apk add --no-cache curl
 
-# Get current user ID to avoid permission issues
-ARG USER_ID=1000
-ARG GROUP_ID=1000
+# Copy package.json and package-lock.json
+COPY package*.json ./
 
-# Create user and group
-RUN addgroup -g ${GROUP_ID} -S nodejs && \
-    adduser -u ${USER_ID} -S nextjs -G nodejs
-
-# Copy package.json and package-lock.json first
-COPY --chown=nextjs:nodejs package*.json ./
-
-# Install dependencies as nextjs user
-USER nextjs
+# Install dependencies
 RUN npm ci
-
-# Copy the rest of the application code
-COPY --chown=nextjs:nodejs . .
-
-# Ensure nextjs user owns everything in /app
-USER root
-RUN chown -R nextjs:nodejs /app && \
-    chmod -R 755 /app
-
-# Switch back to nextjs user
-USER nextjs
 
 EXPOSE 3000
 
