@@ -1,36 +1,135 @@
 version: '3.8'
+
 services:
   pm_postgres_db:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pm_password}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
+      - postgres_backups:/backups
+    restart: always
     deploy:
+      replicas: 1
       resources:
         limits:
-          memory: 1G
+          memory: 2G
+          cpus: '1.0'
         reservations:
-          memory: 512M
+          memory: 1G
+          cpus: '0.5'
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 300s
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c max_connections=200
+      -c shared_buffers=512MB
+      -c effective_cache_size=1536MB
+      -c maintenance_work_mem=128MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=32MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=8MB
+      -c min_wal_size=2GB
+      -c max_wal_size=8GB
+      -c max_worker_processes=8
+      -c max_parallel_workers_per_gather=2
+      -c max_parallel_workers=8
+      -c log_min_duration_statement=1000
+      -c log_checkpoints=on
+      -c log_connections=on
+      -c log_disconnections=on
+      -c log_lock_waits=on
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   fastapi:
     environment:
       - DATABASE_URL=postgresql://pm_user:${POSTGRES_PASSWORD:-pm_password}@pm_postgres_db:5432/pm_database
       - DEBUG=False
       - LOG_LEVEL=WARNING
-    restart: unless-stopped
+      - SECRET_KEY=${SECRET_KEY}
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - WORKERS=4
+    restart: always
     deploy:
       replicas: 2
       resources:
         limits:
-          memory: 512M
+          memory: 1G
+          cpus: '1.0'
         reservations:
-          memory: 256M
+          memory: 512M
+          cpus: '0.5'
       restart_policy:
         condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
+        delay: 10s
+        max_attempts: 5
+        window: 300s
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fastapi.rule=Host(`api.yourdomain.com`)"
+      - "traefik.http.routers.fastapi.tls=true"
+      - "traefik.http.routers.fastapi.tls.certresolver=letsencrypt"
+
+  frontend:
+    environment:
+      - NODE_ENV=production
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - BACKEND_URL=http://fastapi:8000
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
+      - NEXT_TELEMETRY_DISABLED=1
+    restart: always
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 300s
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`yourdomain.com`)"
+      - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
 
   nginx:
     ports:
@@ -39,21 +138,175 @@ services:
     volumes:
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - nginx_logs:/var/log/nginx
+      - nginx_cache:/var/cache/nginx
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 300s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nginx.rule=Host(`yourdomain.com`)"
+      - "traefik.http.routers.nginx.tls=true"
+      - "traefik.http.routers.nginx.tls.certresolver=letsencrypt"
+
+  # Backup service for PostgreSQL
+  postgres_backup:
+    image: prodrigestivill/postgres-backup-local:16
+    container_name: pm_postgres_backup
     restart: unless-stopped
+    environment:
+      POSTGRES_HOST: pm_postgres_db
+      POSTGRES_DB: pm_database
+      POSTGRES_USER: pm_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pm_password}
+      POSTGRES_EXTRA_OPTS: "-Z9 --schema=public --blobs"
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 6
+    volumes:
+      - postgres_backups:/backups
+    depends_on:
+      pm_postgres_db:
+        condition: service_healthy
+    networks:
+      - pm_network
     deploy:
       resources:
         limits:
           memory: 256M
+          cpus: '0.25'
         reservations:
           memory: 128M
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
+          cpus: '0.1'
+    security_opt:
+      - no-new-privileges:true
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    container_name: pm_redis
+    restart: always
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-redis_password}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    expose:
+      - "6379"
+    networks:
+      - pm_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Monitoring with Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: pm_prometheus
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    networks:
+      - pm_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: pm_grafana
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - pm_network
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+    security_opt:
+      - no-new-privileges:true
 
 volumes:
   postgres_data:
     driver: local
+  postgres_backups:
+    driver: local
   nginx_logs:
+    driver: local
+  nginx_cache:
+    driver: local
+  uploads_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
     driver: local 

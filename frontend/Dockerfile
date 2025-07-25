@@ -1,43 +1,134 @@
-# Install dependencies only when needed
-FROM node:20-alpine AS deps
+# Base stage with Node.js and pnpm
+FROM node:20-alpine AS base
+
+# Install system dependencies
+RUN apk add --no-cache \
+    curl \
+    libc6-compat \
+    && corepack enable \
+    && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
 
-# Build the app
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN npm run build
+# Set environment variables
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NODE_ENV=production
 
-# Production image, copy built assets and run Next.js
-FROM node:20-alpine AS runner
-WORKDIR /app
-ENV NODE_ENV=production
+# Dependencies stage
+FROM base AS deps
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+# Copy package files
+COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Install dependencies based on the preferred package manager
+RUN \
+  if [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
+  elif [ -f package-lock.json ]; then npm ci; \
+  elif [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; \
+  else echo "Lockfile not found." && exit 1; \
+  fi
 
-# Only copy necessary files
-COPY --from=builder /app/next.config.ts ./
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
+# Development stage
+FROM base AS development
 
-# Change ownership to nextjs user
-RUN chown -R nextjs:nodejs /app
+# Install curl for health checks and development tools
+RUN apk add --no-cache curl git
+
+# Create nextjs user with specific UID/GID for development
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 --ingroup nodejs nextjs
+
+# Copy node_modules from deps stage
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+
+# Copy application code
+COPY --chown=nextjs:nodejs . .
+
+# Create necessary directories with proper permissions
+RUN mkdir -p .next .next/cache .next/server .next/static && \
+    touch next-env.d.ts && \
+    chown -R nextjs:nodejs /app
+
 USER nextjs
 
 EXPOSE 3000
 
-# Add health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000 || exit 1
+# Health check for development
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:3000/api/health || exit 1
 
-CMD ["npm", "start"] 
+# Development command with hot reloading
+CMD ["npm", "run", "dev"]
+
+# Builder stage for production
+FROM base AS builder
+
+# Copy node_modules from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy application code
+COPY . .
+
+# Set build-time environment variables
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1
+
+# Build the application
+RUN \
+  if [ -f yarn.lock ]; then yarn build; \
+  elif [ -f package-lock.json ]; then npm run build; \
+  elif [ -f pnpm-lock.yaml ]; then pnpm build; \
+  else npm run build; \
+  fi
+
+# Production stage
+FROM base AS production
+
+# Create nextjs user for production
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 --ingroup nodejs nextjs
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Create app directories
+RUN mkdir -p /app/.next/cache && \
+    chown -R nextjs:nodejs /app
+
+WORKDIR /app
+
+# Copy built application from builder stage
+COPY --from=builder --chown=nextjs:nodejs /app/next.config.* ./
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
+
+# Create startup script for production
+RUN echo '#!/bin/sh\n\
+set -e\n\
+\n\
+echo "=== Next.js Production Startup ==="\n\
+echo "Environment: $NODE_ENV"\n\
+echo "Build ID: $(cat .next/BUILD_ID 2>/dev/null || echo "unknown")"\n\
+echo "Starting Next.js server..."\n\
+\n\
+# Start the application\n\
+exec node server.js\n\
+' > /app/start.sh && \
+    chmod +x /app/start.sh && \
+    chown nextjs:nodejs /app/start.sh
+
+USER nextjs
+
+EXPOSE 3000
+
+# Production health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:3000/api/health || exit 1
+
+# Environment variables for runtime
+ENV PORT=3000 \
+    HOSTNAME="0.0.0.0"
+
+CMD ["/app/start.sh"] 
