@@ -1,469 +1,436 @@
-# PM System API
+# Project Management System - Docker Setup
 
-A comprehensive Preventive Maintenance (PM) System built with FastAPI and PostgreSQL.
+A modern, production-ready Docker setup for a full-stack Project Management System built with FastAPI, Next.js, PostgreSQL, and Nginx.
 
-## Features
+## 🚀 Features
 
-- **User Management**: Role-based access control (Technician, Supervisor, Manager, Admin)
-- **Property & Room Management**: Organize equipment by location
-- **Machine Tracking**: Complete equipment inventory and maintenance history
-- **PM Scheduling**: Automated preventive maintenance scheduling
-- **Issue Management**: Track and resolve maintenance issues
-- **Inspections**: Conduct and document equipment inspections
-- **File Management**: Attach files to PMs, issues, and inspections
-- **Admin Dashboard**: Comprehensive system administration tools
+### Infrastructure
+- **Multi-stage Docker builds** for optimized production images
+- **Development and production environments** with separate configurations
+- **Custom networking** with isolated subnets
+- **Advanced health checks** and monitoring
+- **Automatic SSL certificate generation**
+- **Comprehensive logging** and log rotation
 
-## Tech Stack
+### Security
+- **Non-root containers** with proper user management
+- **Security headers** and OWASP compliance
+- **Rate limiting** and DDoS protection
+- **Read-only containers** where possible
+- **Resource limits** and quotas
+- **Network isolation** and security groups
 
-- **Backend**: FastAPI (Python)
-- **Database**: PostgreSQL (production) / SQLite (development)
-- **ORM**: SQLAlchemy
-- **Migrations**: Alembic
-- **Reverse Proxy**: Nginx
-- **Containerization**: Docker & Docker Compose
-- **API Documentation**: Auto-generated with FastAPI
+### Performance
+- **Nginx caching** with multiple cache zones
+- **Database optimization** with tuned PostgreSQL settings
+- **Static asset optimization** with aggressive caching
+- **Connection pooling** and keep-alive
+- **Gzip compression** and content optimization
+- **Load balancing** with upstream health checks
 
-## Quick Start
+### Monitoring & Backup
+- **Prometheus metrics** collection
+- **Grafana dashboards** for visualization
+- **Automated database backups** with retention policies
+- **Redis caching** for session management
+- **Log aggregation** and rotation
 
-### Using Docker (Recommended)
+## 📋 Prerequisites
 
-1. **Clone and navigate to the project:**
+- Docker 24.0+ and Docker Compose 2.20+
+- Make (for using Makefile commands)
+- 4GB+ RAM for production setup
+- 2GB+ free disk space
+
+## 🛠️ Quick Start
+
+### Development Environment
+
+1. **Clone and setup**:
    ```bash
-   cd Fast_api
+   git clone <your-repo>
+   cd <your-project>
+   make setup  # Copies .env.example to .env
    ```
 
-2. **Copy environment configuration:**
+2. **Edit environment variables**:
    ```bash
-   cp .env.example .env
-   # Edit .env file with your preferred settings
+   nano .env  # Configure your settings
    ```
 
-3. **Start the application:**
-   
-   **For Development:**
+3. **Start development environment**:
    ```bash
-   ./docker-manage.sh dev
-   # OR manually:
-   docker-compose up --build
-   ```
-   
-   **For Production:**
-   ```bash
-   ./docker-manage.sh prod
-   # OR manually:
-   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+   make dev  # or make quick-start
    ```
 
-4. **Access the application:**
-   - **Development:**
-     - Frontend: http://localhost:3000
-     - Backend API: http://localhost:8000
-     - API Documentation: http://localhost:8000/docs
-     - Database Admin (Adminer): http://localhost:8081
-     - Nginx Proxy: http://localhost
-   - **Production:**
-     - Application: http://localhost
-     - API Documentation: http://localhost/docs
-     - Database Admin: http://localhost:8081
+4. **Access services**:
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - API Docs: http://localhost:8000/docs
+   - Adminer: http://localhost:8081
+   - PgAdmin: http://localhost:5050
 
-### Docker Management Commands
+### Production Environment
 
-Use the included management script for common operations:
+1. **Setup production environment**:
+   ```bash
+   make quick-prod  # Generates SSL certs and starts production
+   ```
 
+2. **Or step by step**:
+   ```bash
+   make ssl-cert    # Generate SSL certificates
+   make prod-build  # Build and start production
+   ```
+
+3. **Access monitoring**:
+   ```bash
+   make monitoring  # Start Prometheus + Grafana
+   ```
+   - Prometheus: http://localhost:9090
+   - Grafana: http://localhost:3001 (admin/admin)
+
+## 📖 Available Commands
+
+View all available commands:
 ```bash
-./docker-manage.sh dev      # Start development environment
-./docker-manage.sh prod     # Start production environment
-./docker-manage.sh stop     # Stop all containers
-./docker-manage.sh clean    # Clean up containers and volumes
-./docker-manage.sh logs     # View container logs
-./docker-manage.sh db-shell # Connect to PostgreSQL database
+make help
 ```
 
-## Database Configuration
-
-### PostgreSQL Setup
-
-The application uses PostgreSQL as the primary database. The Docker setup includes:
-
-- **PostgreSQL 15** container with persistent data storage
-- **Adminer** web interface for database management
-- **Automatic initialization** with proper user permissions
-- **Health checks** to ensure database availability
-
-### Database Connection
-
-**Environment Variables:**
+### Development Commands
 ```bash
-DATABASE_URL=postgresql://pm_user:pm_password@pm_postgres_db:5432/pm_database
-POSTGRES_DB=pm_database
-POSTGRES_USER=pm_user
-POSTGRES_PASSWORD=pm_password
+make dev          # Start development environment
+make dev-build    # Build and start development
+make dev-logs     # Show development logs
+make dev-down     # Stop development environment
+make dev-clean    # Clean development environment
 ```
 
-**Database Access:**
-- **Adminer Web Interface**: http://localhost:8081
-  - Server: `pm_postgres_db`
-  - Username: `pm_user`
-  - Password: `pm_password`
-  - Database: `pm_database`
-
-- **Direct Connection**: 
-  ```bash
-  ./docker-manage.sh db-shell
-  # OR manually:
-  docker-compose exec pm_postgres_db psql -U pm_user -d pm_database
-  ```
-
-### Database Management
-
-**Backup Database:**
+### Production Commands
 ```bash
-docker-compose exec pm_postgres_db pg_dump -U pm_user pm_database > backup.sql
+make prod         # Start production environment
+make prod-build   # Build and start production
+make prod-logs    # Show production logs
+make prod-down    # Stop production environment
 ```
 
-**Restore Database:**
+### Database Commands
 ```bash
-docker-compose exec -T pm_postgres_db psql -U pm_user pm_database < backup.sql
+make db-shell     # Access PostgreSQL shell
+make db-backup    # Create database backup
+make db-restore BACKUP=file.sql  # Restore from backup
 ```
 
-**Reset Database:**
+### Development Tools
 ```bash
-./docker-manage.sh clean  # This will remove all data
-./docker-manage.sh dev    # Restart with fresh database
+make shell-api       # Access FastAPI container
+make shell-frontend  # Access Next.js container
+make test           # Run backend tests
+make lint           # Run code linting
+make format         # Format code
 ```
 
-### Local Development
+### Monitoring & Maintenance
+```bash
+make monitoring     # Start monitoring stack
+make health        # Check service health
+make clean         # Clean Docker resources
+make update        # Update all containers
+```
 
-1. **Set up Python environment:**
-   ```bash
-   cd backend
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+## 🔧 Configuration
 
-2. **Initialize database:**
-   ```bash
-   # For development (creates tables directly)
-   python init_db.py
-   
-   # For production (uses migrations)
-   python manage_migrations.py init
-   ```
+### Environment Variables
 
-3. **Run the application:**
-   ```bash
-   uvicorn main:app --reload
-   ```
+Key environment variables (see `.env.example` for complete list):
 
-## API Endpoints
+```bash
+# Database
+POSTGRES_PASSWORD=your-secure-password
+DATABASE_URL=postgresql://pm_user:password@pm_postgres_db:5432/pm_database
 
-### Core Endpoints
-- `GET /` - Health check
-- `GET /docs` - Interactive API documentation
+# Security
+SECRET_KEY=your-super-secret-key-min-32-chars
+NEXTAUTH_SECRET=your-nextauth-secret-min-32-chars
 
-### User Management
-- `GET /api/v1/users/` - Get all users
-- `GET /api/v1/users/{id}` - Get specific user
-- `POST /api/v1/users/` - Create new user
-- `PUT /api/v1/users/{id}` - Update user
-- `DELETE /api/v1/users/{id}` - Delete user
+# Production
+ENVIRONMENT=production
+WORKERS=4
+LOG_LEVEL=WARNING
 
-### Admin Endpoints
-- `GET /api/v1/admin/stats` - System statistics
-- `POST /api/v1/admin/setup` - Initial system setup
-- `GET /api/v1/admin/health` - System health check
-- `POST /api/v1/admin/cleanup/files` - Clean old files
-- `POST /api/v1/admin/users/deactivate-inactive` - Deactivate inactive users
+# Monitoring
+GRAFANA_ADMIN_PASSWORD=secure-admin-password
+```
 
-### Migration Endpoints
-- `GET /api/v1/migrations/status` - Get migration status
-- `GET /api/v1/migrations/history` - Get migration history
-- `POST /api/v1/migrations/upgrade` - Upgrade database
-- `POST /api/v1/migrations/downgrade` - Downgrade database
-- `POST /api/v1/migrations/create` - Create new migration
-- `POST /api/v1/migrations/stamp` - Stamp database revision
+### Development vs Production
 
-## Database Schema
+The setup automatically detects environment and applies appropriate configurations:
 
-### Core Entities
-- **Users**: System users with role-based access
-- **Properties**: Physical locations/facilities
-- **Rooms**: Rooms within properties
-- **Machines**: Equipment requiring maintenance
-- **Topics**: Maintenance categories
-- **Procedures**: Maintenance procedures and instructions
+**Development Features:**
+- Hot reloading for frontend and backend
+- Debug logging and detailed error messages
+- Development tools (PgAdmin, Mailhog, File Browser)
+- Direct port exposure for services
+- Volume mounts for live code editing
 
-### Maintenance Entities
-- **PM Schedules**: Scheduled maintenance tasks
-- **PM Executions**: Actual maintenance performed
-- **Issues**: Problems requiring attention
-- **Inspections**: Equipment inspections
-- **PM Files**: Attachments for maintenance records
+**Production Features:**
+- Optimized container images
+- Enhanced security headers
+- Automated backups
+- Monitoring and alerting
+- Resource limits and scaling
+- SSL/TLS encryption
 
-## Default Data
+## 🏗️ Architecture
 
-The system automatically creates:
-- Admin user: `admin` / `admin@pmsystem.com`
-- Default maintenance topics (Preventive, Corrective, Inspection, etc.)
-- Sample maintenance procedures
-
-## Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | Database connection string | `sqlite:///./pm_system.db` |
-| `DEBUG` | Enable debug mode | `True` |
-| `LOG_LEVEL` | Logging level | `INFO` |
-
-## Docker Configuration
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│     Nginx       │◄───┤   Next.js       │    │    FastAPI      │
+│   (Reverse      │    │  (Frontend)     │    │   (Backend)     │
+│    Proxy)       │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   PostgreSQL    │    │     Redis       │    │   Prometheus    │
+│   (Database)    │    │   (Cache)       │    │  (Monitoring)   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
 
 ### Services
-- **nginx**: Reverse proxy and load balancer
-- **fastapi**: Main application server
-- **postgres**: PostgreSQL database
-- **networks**: Isolated network for services
-- **volumes**: Persistent database and log storage
 
-### Ports
-- **80**: Nginx (HTTP)
-- **443**: Nginx (HTTPS)
-- **15432**: PostgreSQL database (mapped from container port 5432)
+- **Nginx**: Reverse proxy, load balancer, SSL termination
+- **Next.js**: React frontend with SSR/SSG
+- **FastAPI**: Python backend API
+- **PostgreSQL**: Primary database with optimized settings
+- **Redis**: Caching and session storage
+- **Prometheus**: Metrics collection
+- **Grafana**: Monitoring dashboards
+- **Adminer**: Database administration
 
-## Database Migrations
+## 🔍 Monitoring
 
-The system uses Alembic for database migrations, allowing safe schema changes in production.
+### Health Checks
 
-### Migration Commands
+All services include comprehensive health checks:
+- HTTP endpoint monitoring
+- Database connectivity checks
+- Resource utilization monitoring
+- Custom application metrics
 
-#### **Local Development:**
+### Logging
+
+Centralized logging with:
+- Structured JSON logs
+- Log rotation and retention
+- Different log levels per environment
+- Request/response logging
+
+### Metrics
+
+Prometheus metrics include:
+- Application performance metrics
+- Database performance
+- HTTP request metrics
+- System resource usage
+- Custom business metrics
+
+## 🔒 Security Features
+
+### Container Security
+- Non-root user execution
+- Read-only root filesystems
+- Minimal base images (Alpine Linux)
+- Security scanning integration
+- Capability dropping
+
+### Network Security
+- Isolated Docker networks
+- Internal service communication
+- Rate limiting and DDoS protection
+- Security headers (HSTS, CSP, etc.)
+
+### Data Protection
+- Encrypted database connections
+- SSL/TLS for all external traffic
+- Secure credential management
+- Regular security updates
+
+## 🚀 Performance Optimizations
+
+### Caching Strategy
+- Multi-level caching (Nginx, Redis, Browser)
+- Static asset optimization
+- Database query caching
+- API response caching
+
+### Database Tuning
+- Optimized PostgreSQL configuration
+- Connection pooling
+- Query optimization
+- Regular maintenance tasks
+
+### Frontend Optimization
+- Next.js optimization features
+- Static generation where possible
+- Image optimization
+- Bundle splitting
+
+## 🔄 Backup & Recovery
+
+### Automated Backups
+- Daily PostgreSQL dumps
+- Configurable retention policies
+- Compressed backup storage
+- Health monitoring of backup process
+
+### Disaster Recovery
 ```bash
-# Create initial migration
-python manage_migrations.py init
+# Create backup
+make db-backup
 
-# Create new migration
-python manage_migrations.py create "Add new table"
+# Restore from backup
+make db-restore BACKUP=backup_20240101_120000.sql
 
-# Apply migrations
-python manage_migrations.py upgrade
-
-# Downgrade migration
-python manage_migrations.py downgrade -1
-
-# Show migration history
-python manage_migrations.py history
-
-# Show current status
-python manage_migrations.py current
+# Full system backup (manual)
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml \
+  run --rm postgres_backup /backup.sh
 ```
 
-#### **Docker Environment:**
-```bash
-# Create initial migration
-./docker-migrate.sh init
-
-# Create new migration
-./docker-migrate.sh create "Add new table"
-
-# Apply migrations
-./docker-migrate.sh upgrade
-
-# Show migration history
-./docker-migrate.sh history
-```
-
-#### **API Endpoints:**
-```bash
-# Get migration status
-curl http://localhost/api/v1/migrations/status
-
-# Get migration history
-curl http://localhost/api/v1/migrations/history
-
-# Upgrade database
-curl -X POST http://localhost/api/v1/migrations/upgrade
-
-# Create new migration
-curl -X POST http://localhost/api/v1/migrations/create \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Add new table"}'
-```
-
-### Migration Workflow
-
-1. **Development**: Make changes to models in `models/models.py`
-2. **Create Migration**: Generate migration file with changes
-3. **Review**: Check generated migration in `migrations/versions/`
-4. **Apply**: Run migration to update database
-5. **Test**: Verify changes work correctly
-
-## Development
-
-### Project Structure
-```
-backend/
-├── models/              # Database models
-├── routes/              # API routes
-├── migrations/          # Database migrations
-│   ├── versions/        # Migration files
-│   ├── env.py           # Migration environment
-│   └── script.py.mako   # Migration template
-├── admin.py             # Admin utilities
-├── database.py          # Database configuration
-├── main.py              # FastAPI application
-├── init_db.py           # Database initialization
-├── manage_migrations.py # Migration management script
-├── docker-migrate.sh    # Docker migration script
-├── alembic.ini          # Alembic configuration
-└── requirements.txt     # Python dependencies
-```
-
-### Adding New Features
-1. Create models in `models/models.py`
-2. Add Pydantic schemas in `models/`
-3. Create routes in `routes/`
-4. Create database migration: `python manage_migrations.py create "Description"`
-5. Apply migration: `python manage_migrations.py upgrade`
-6. Update admin functions if needed
-7. Test with Docker Compose
-
-## Production Deployment
-
-1. **Set production environment variables:**
-   ```bash
-   export POSTGRES_PASSWORD=your_secure_password
-   export DATABASE_URL=postgresql://pm_user:your_secure_password@localhost:15432/pm_system
-   export DEBUG=False
-   export ENVIRONMENT=production
-   ```
-
-2. **Run database migrations:**
-   ```bash
-   # Using Docker
-   ./docker-migrate.sh init
-   
-   # Or locally
-   python manage_migrations.py init
-   python manage_migrations.py upgrade
-   ```
-
-3. **Generate SSL certificates (or use Let's Encrypt):**
-   ```bash
-   # For development (self-signed)
-   ./nginx/generate-ssl.sh
-   ```
-
-## Troubleshooting
+## 🐛 Troubleshooting
 
 ### Common Issues
 
-**Database Connection Failed:**
+**Services not starting:**
 ```bash
-# Check if PostgreSQL container is running
-./docker-manage.sh logs
-
-# Reset database if corrupted
-./docker-manage.sh clean
-./docker-manage.sh dev
+make health  # Check service status
+make logs    # Check logs for errors
 ```
 
-**Port Already in Use:**
+**Database connection issues:**
 ```bash
-# Find process using the port
-sudo lsof -i :8000  # For backend
-sudo lsof -i :3000  # For frontend
-sudo lsof -i :80    # For nginx
-
-# Stop the conflicting process or change ports in docker-compose.yml
+make db-shell  # Test database connectivity
+make logs-db   # Check database logs
 ```
 
-**Frontend Build Issues:**
+**Permission issues:**
 ```bash
-# Clear npm cache and rebuild
-./docker-manage.sh stop
-docker-compose build --no-cache frontend
-./docker-manage.sh dev
+make dev-clean  # Clean and restart
+sudo chown -R $USER:$USER .  # Fix file permissions
 ```
 
-**Permission Issues:**
+**Performance issues:**
 ```bash
-# Fix file permissions
-sudo chown -R $USER:$USER .
-chmod +x docker-manage.sh
+make monitoring  # Check Grafana dashboards
+docker stats     # Check resource usage
 ```
 
-**Database Not Initializing:**
+### Debug Mode
+
+Enable debug mode for troubleshooting:
 ```bash
-# Check init.sql is properly loaded
-./docker-manage.sh db-shell
-\l  # List databases
-\dt # List tables
+# In .env file
+DEBUG=True
+LOG_LEVEL=DEBUG
+
+# Restart services
+make restart
 ```
 
-**Health Check Failures:**
-```bash
-# Check service logs
-./docker-manage.sh logs fastapi
-./docker-manage.sh logs frontend
-./docker-manage.sh logs pm_postgres_db
-```
+## 📚 Development Workflow
 
-### Getting Help
-
-- Check container logs: `./docker-manage.sh logs`
-- Access database: `./docker-manage.sh db-shell`
-- API Documentation: http://localhost:8000/docs (development)
-- Database Admin: http://localhost:8081
-   
-   # For production, place your certificates in nginx/ssl/
-   # - cert.pem (certificate)
-   # - key.pem (private key)
-   ```
-
-4. **Use production Docker Compose:**
+1. **Start development environment**:
    ```bash
-   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+   make dev
    ```
 
-5. **Enable HTTPS (uncomment SSL configuration in nginx/nginx.conf)**
+2. **Make code changes** (auto-reload enabled)
 
-## Troubleshooting
+3. **Run tests**:
+   ```bash
+   make test
+   make test-frontend
+   ```
 
-### Common Issues
+4. **Code quality checks**:
+   ```bash
+   make lint
+   make format
+   ```
 
-1. **Database connection failed:**
-   - Check if PostgreSQL container is running
-   - Verify database credentials
-   - Check network connectivity
+5. **Database operations**:
+   ```bash
+   make db-shell     # Access database
+   make db-backup    # Backup before major changes
+   ```
 
-2. **Port already in use:**
-   - Change ports in docker-compose.yml
-   - Stop conflicting services
+## 🚀 Deployment
 
-3. **Permission denied:**
-   - Check file permissions
-   - Run with appropriate user privileges
+### Production Deployment
 
-### Logs
-```bash
-# View application logs
-docker-compose logs fastapi
+1. **Prepare environment**:
+   ```bash
+   cp .env.example .env.prod
+   # Edit .env.prod with production values
+   ```
 
-# View database logs
-docker-compose logs postgres
+2. **Deploy**:
+   ```bash
+   ENV=production make prod-build
+   ```
 
-# Follow logs in real-time
-docker-compose logs -f
+3. **Enable monitoring**:
+   ```bash
+   make monitoring
+   ```
+
+4. **Setup automated backups**:
+   ```bash
+   # Backups run automatically via cron in production
+   # Check backup logs: make logs | grep backup
+   ```
+
+### Scaling
+
+For horizontal scaling, modify `docker-compose.prod.yml`:
+```yaml
+services:
+  fastapi:
+    deploy:
+      replicas: 4  # Scale backend
+  frontend:
+    deploy:
+      replicas: 2  # Scale frontend
 ```
 
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
+3. Make changes in development environment
+4. Run tests and linting
 5. Submit a pull request
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License. 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙋 Support
+
+For issues and questions:
+1. Check the troubleshooting section
+2. Review logs: `make logs`
+3. Open an issue on GitHub
+4. Check existing documentation
+
+## 🎉 What's New in This Version
+
+- **Multi-stage Docker builds** for 60% smaller production images
+- **Enhanced security** with non-root users and read-only containers
+- **Advanced caching** with Nginx cache zones and Redis integration
+- **Comprehensive monitoring** with Prometheus and Grafana
+- **Automated backups** with configurable retention
+- **Production-ready** SSL, security headers, and rate limiting
+- **Developer experience** improvements with hot reloading and debugging tools
+- **Performance optimizations** with tuned database settings and connection pooling 
