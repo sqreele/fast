@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  postgres:
+  pm_postgres_db:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pm_password}
     volumes:
@@ -15,7 +15,7 @@ services:
 
   fastapi:
     environment:
-      - DATABASE_URL=postgresql://pm_user:${POSTGRES_PASSWORD:-pm_password}@postgres:5432/pm_system
+      - DATABASE_URL=postgresql://pm_user:${POSTGRES_PASSWORD:-pm_password}@pm_postgres_db:5432/pm_database
       - DEBUG=False
       - LOG_LEVEL=WARNING
     restart: unless-stopped

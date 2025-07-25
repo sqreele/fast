@@ -32,16 +32,105 @@ A comprehensive Preventive Maintenance (PM) System built with FastAPI and Postgr
    cd Fast_api
    ```
 
-2. **Start the application:**
+2. **Copy environment configuration:**
    ```bash
-   docker-compose up --build
+   cp .env.example .env
+   # Edit .env file with your preferred settings
    ```
 
-3. **Access the application:**
-   - API: http://localhost
-   - API Documentation: http://localhost/docs
-   - Admin Dashboard: http://localhost/api/v1/admin/health
-   - Health Check: http://localhost/health
+3. **Start the application:**
+   
+   **For Development:**
+   ```bash
+   ./docker-manage.sh dev
+   # OR manually:
+   docker-compose up --build
+   ```
+   
+   **For Production:**
+   ```bash
+   ./docker-manage.sh prod
+   # OR manually:
+   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+   ```
+
+4. **Access the application:**
+   - **Development:**
+     - Frontend: http://localhost:3000
+     - Backend API: http://localhost:8000
+     - API Documentation: http://localhost:8000/docs
+     - Database Admin (Adminer): http://localhost:8081
+     - Nginx Proxy: http://localhost
+   - **Production:**
+     - Application: http://localhost
+     - API Documentation: http://localhost/docs
+     - Database Admin: http://localhost:8081
+
+### Docker Management Commands
+
+Use the included management script for common operations:
+
+```bash
+./docker-manage.sh dev      # Start development environment
+./docker-manage.sh prod     # Start production environment
+./docker-manage.sh stop     # Stop all containers
+./docker-manage.sh clean    # Clean up containers and volumes
+./docker-manage.sh logs     # View container logs
+./docker-manage.sh db-shell # Connect to PostgreSQL database
+```
+
+## Database Configuration
+
+### PostgreSQL Setup
+
+The application uses PostgreSQL as the primary database. The Docker setup includes:
+
+- **PostgreSQL 15** container with persistent data storage
+- **Adminer** web interface for database management
+- **Automatic initialization** with proper user permissions
+- **Health checks** to ensure database availability
+
+### Database Connection
+
+**Environment Variables:**
+```bash
+DATABASE_URL=postgresql://pm_user:pm_password@pm_postgres_db:5432/pm_database
+POSTGRES_DB=pm_database
+POSTGRES_USER=pm_user
+POSTGRES_PASSWORD=pm_password
+```
+
+**Database Access:**
+- **Adminer Web Interface**: http://localhost:8081
+  - Server: `pm_postgres_db`
+  - Username: `pm_user`
+  - Password: `pm_password`
+  - Database: `pm_database`
+
+- **Direct Connection**: 
+  ```bash
+  ./docker-manage.sh db-shell
+  # OR manually:
+  docker-compose exec pm_postgres_db psql -U pm_user -d pm_database
+  ```
+
+### Database Management
+
+**Backup Database:**
+```bash
+docker-compose exec pm_postgres_db pg_dump -U pm_user pm_database > backup.sql
+```
+
+**Restore Database:**
+```bash
+docker-compose exec -T pm_postgres_db psql -U pm_user pm_database < backup.sql
+```
+
+**Reset Database:**
+```bash
+./docker-manage.sh clean  # This will remove all data
+./docker-manage.sh dev    # Restart with fresh database
+```
 
 ### Local Development
 
@@ -262,6 +351,69 @@ backend/
    ```bash
    # For development (self-signed)
    ./nginx/generate-ssl.sh
+   ```
+
+## Troubleshooting
+
+### Common Issues
+
+**Database Connection Failed:**
+```bash
+# Check if PostgreSQL container is running
+./docker-manage.sh logs
+
+# Reset database if corrupted
+./docker-manage.sh clean
+./docker-manage.sh dev
+```
+
+**Port Already in Use:**
+```bash
+# Find process using the port
+sudo lsof -i :8000  # For backend
+sudo lsof -i :3000  # For frontend
+sudo lsof -i :80    # For nginx
+
+# Stop the conflicting process or change ports in docker-compose.yml
+```
+
+**Frontend Build Issues:**
+```bash
+# Clear npm cache and rebuild
+./docker-manage.sh stop
+docker-compose build --no-cache frontend
+./docker-manage.sh dev
+```
+
+**Permission Issues:**
+```bash
+# Fix file permissions
+sudo chown -R $USER:$USER .
+chmod +x docker-manage.sh
+```
+
+**Database Not Initializing:**
+```bash
+# Check init.sql is properly loaded
+./docker-manage.sh db-shell
+\l  # List databases
+\dt # List tables
+```
+
+**Health Check Failures:**
+```bash
+# Check service logs
+./docker-manage.sh logs fastapi
+./docker-manage.sh logs frontend
+./docker-manage.sh logs pm_postgres_db
+```
+
+### Getting Help
+
+- Check container logs: `./docker-manage.sh logs`
+- Access database: `./docker-manage.sh db-shell`
+- API Documentation: http://localhost:8000/docs (development)
+- Database Admin: http://localhost:8081
    
    # For production, place your certificates in nginx/ssl/
    # - cert.pem (certificate)
