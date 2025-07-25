@@ -51,7 +51,7 @@ const handler = NextAuth({
           
           if (user && (user.token || user.id || user.email)) {
             return {
-              id: user.id || user.email || user.name || "unknown",
+              id: user.id?.toString() || user.email || user.name || "unknown",
               name: user.name,
               email: user.email,
               token: user.token
@@ -65,7 +65,7 @@ const handler = NextAuth({
     })
   ],
   pages: {
-    signIn: '/api/auth/siginin',  // Fixed typo and correct path
+    signIn: '/api/auth/signin',  // Fixed typo
     error: '/api/auth/error',
     signOut: '/api/auth/signout'
   },
