@@ -8,15 +8,15 @@ RUN apk add --no-cache \
     tzdata \
     bash
 
-# Create nginx user
-RUN addgroup -g 1001 -S nginx && \
-    adduser -u 1001 -D -S -G nginx nginx
+# Create nginx user and group only if not already existing
+RUN getent group nginx || addgroup -g 1001 -S nginx && \
+    id -u nginx || adduser -u 1001 -D -S -G nginx nginx
 
-# Remove default config
+# Remove default nginx configuration
 RUN rm -f /etc/nginx/conf.d/default.conf \
     && rm -f /etc/nginx/nginx.conf
 
-# Create required directories and set permissions
+# Create required directories and assign permissions
 RUN mkdir -p \
     /var/cache/nginx/client_temp \
     /var/cache/nginx/proxy_temp \
@@ -26,27 +26,27 @@ RUN mkdir -p \
     /var/log/nginx \
     /etc/nginx/ssl \
     /var/www/static \
-    /etc/nginx/conf.d \
-    && chown -R nginx:nginx /var/cache/nginx /var/log/nginx /etc/nginx /var/www
+    /etc/nginx/conf.d && \
+    chown -R nginx:nginx /var/cache/nginx /var/log/nginx /etc/nginx /var/www
 
-# Copy nginx config files
+# Copy custom nginx configuration files
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY default.conf security-headers.conf gzip.conf /etc/nginx/conf.d/
 
-# Generate self-signed cert for local HTTPS
+# Generate self-signed SSL certificate for local development
 RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout /etc/nginx/ssl/nginx-selfsigned.key \
     -out /etc/nginx/ssl/nginx-selfsigned.crt \
-    -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost" \
-    && chmod 600 /etc/nginx/ssl/nginx-selfsigned.key \
-    && chmod 644 /etc/nginx/ssl/nginx-selfsigned.crt \
-    && chown -R nginx:nginx /etc/nginx/ssl
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost" && \
+    chmod 600 /etc/nginx/ssl/nginx-selfsigned.key && \
+    chmod 644 /etc/nginx/ssl/nginx-selfsigned.crt && \
+    chown -R nginx:nginx /etc/nginx/ssl
 
-# Copy entrypoint
+# Copy custom entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Configure logrotate
+# Configure log rotation for nginx logs
 RUN echo '/var/log/nginx/*.log {\n\
     daily\n\
     missingok\n\
@@ -62,12 +62,12 @@ RUN echo '/var/log/nginx/*.log {\n\
     endscript\n\
 }' > /etc/logrotate.d/nginx
 
-# Expose HTTP & HTTPS
+# Expose standard HTTP and HTTPS ports
 EXPOSE 80 443
 
-# Health check (make sure /health exists or adjust accordingly)
+# Healthcheck (make sure /health exists or modify as needed)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost/health || exit 1
 
-# Start the container
+# Start the container using custom entrypoint
 CMD ["/docker-entrypoint.sh"]
