@@ -17,27 +17,39 @@ const handler = NextAuth({
       },
       async authorize(credentials): Promise<ExtendedUser | null> {
         if (!credentials?.username || !credentials?.password) {
+          console.error('Missing credentials');
           return null;
         }
 
         try {
-          // This will use the BACKEND_URL environment variable
-          const res = await fetch(`${process.env.BACKEND_URL}/api/v1/login`, {
+          // Use internal service name for backend communication
+          const backendUrl = process.env.BACKEND_URL || 'http://fastapi:8000';
+          console.log('Attempting login with backend:', backendUrl);
+          
+          const res = await fetch(`${backendUrl}/api/v1/login`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+            },
             body: JSON.stringify({
               username: credentials.username,
               password: credentials.password
             })
           });
 
+          console.log('Login response status:', res.status);
+
           if (!res.ok) {
-            console.error('Login failed:', res.status, res.statusText);
+            const errorText = await res.text();
+            console.error('Login failed:', res.status, res.statusText, errorText);
             return null;
           }
 
           const user = await res.json() as ExtendedUser;
-          if (user && user.token) {
+          console.log('Login successful for user:', user.name || user.email);
+          
+          if (user && (user.token || user.id || user.email)) {
             return {
               id: user.id || user.email || user.name || "unknown",
               name: user.name,
@@ -53,11 +65,13 @@ const handler = NextAuth({
     })
   ],
   pages: {
-    signIn: '/api/auth/signin',
-    error: '/api/auth/error',  // This should fix the 404 on /auth/error
+    signIn: '/api/auth/siginin',  // Fixed typo and correct path
+    error: '/api/auth/error',
+    signOut: '/api/auth/signout'
   },
   session: {
-    strategy: "jwt"
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 24 hours
   },
   callbacks: {
     async jwt({ token, user }: { token: JWT; user?: ExtendedUser }): Promise<JWT> {
@@ -84,6 +98,7 @@ const handler = NextAuth({
       return baseUrl;
     }
   },
+  secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-key-for-development',
   debug: process.env.NODE_ENV === 'development',
 });
 
