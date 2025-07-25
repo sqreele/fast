@@ -58,7 +58,7 @@ api.interceptors.response.use(
         case 401:
           console.error('Unauthorized access - redirecting to login');
           if (typeof window !== 'undefined') {
-            window.location.href = '/auth/signin';
+            window.location.href = '/api/auth/siginin'; // Fixed path to match actual signin page
           }
           break;
         case 403:
