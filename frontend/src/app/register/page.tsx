@@ -35,9 +35,9 @@ export default function Register() {
 
   const roles = [
     { value: 'TECHNICIAN', label: 'Technician' },
+    { value: 'SUPERVISOR', label: 'Supervisor' },
     { value: 'MANAGER', label: 'Manager' },
-    { value: 'ADMIN', label: 'Admin' },
-    { value: 'USER', label: 'User' }
+    { value: 'ADMIN', label: 'Admin' }
   ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
