@@ -1,5 +1,4 @@
 version: '3.8'
-
 services:
   fastapi:
     build: ./backend
@@ -88,10 +87,11 @@ services:
     volumes:
       - ./nginx/ssl:/etc/nginx/ssl:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]  # Changed from /health to /
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 90s  # Increased start period to wait for dependencies
 
 volumes:
-  postgres_data: 
+  postgres_data:
