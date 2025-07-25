@@ -14,7 +14,7 @@ interface ErrorResponse {
 
 // Create axios instance
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost/api/v1',
+  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -58,7 +58,7 @@ api.interceptors.response.use(
         case 401:
           console.error('Unauthorized access - redirecting to login');
           if (typeof window !== 'undefined') {
-            window.location.href = '/api/auth/siginin'; // Fixed path to match actual signin page
+            window.location.href = '/api/auth/signin'; // Fixed typo in signin
           }
           break;
         case 403:

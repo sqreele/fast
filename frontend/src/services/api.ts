@@ -59,17 +59,17 @@ interface ApiResponse<T> {
 export const authApi = {
   login: async (credentials: { username: string; password: string }) => {
     const response: AxiosResponse<ApiResponse<{ user: User; token: string }>> = 
-      await api.post('/auth/login', credentials);
+      await api.post('/api/v1/auth/login', credentials);
     return response.data;
   },
   
   me: async () => {
-    const response: AxiosResponse<ApiResponse<User>> = await api.get('/auth/me');
+    const response: AxiosResponse<ApiResponse<User>> = await api.get('/api/v1/auth/me');
     return response.data;
   },
   
   logout: async () => {
-    const response: AxiosResponse<ApiResponse<null>> = await api.post('/auth/logout');
+    const response: AxiosResponse<ApiResponse<null>> = await api.post('/api/v1/auth/logout');
     return response.data;
   }
 };
