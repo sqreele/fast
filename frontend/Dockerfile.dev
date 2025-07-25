@@ -5,11 +5,22 @@ WORKDIR /app
 # Install curl for health checks
 RUN apk add --no-cache curl
 
+# Create a non-root user with proper permissions (matching host user)
+RUN addgroup --system --gid 1000 nodejs
+RUN adduser --system --uid 1000 nextjs
+
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
 # Install dependencies
 RUN npm ci
+
+# Create necessary directories and set permissions
+RUN mkdir -p .next && \
+    chown -R nextjs:nodejs /app
+
+# Switch to non-root user
+USER nextjs
 
 EXPOSE 3000
 
