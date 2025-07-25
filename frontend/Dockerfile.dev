@@ -8,17 +8,21 @@ RUN apk add --no-cache curl
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 --ingroup nodejs nextjs
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
+# Copy package files first
+COPY --chown=nextjs:nodejs package*.json ./
 
-# Install dependencies
+# Install dependencies as nextjs user
+USER nextjs
 RUN npm ci
 
-# Create necessary directories and files, set permissions
-RUN mkdir -p .next && \
+# Switch back to root to create directories and set permissions
+USER root
+
+# Create necessary directories and files with proper permissions
+RUN mkdir -p .next .next/cache .next/server .next/static && \
     touch next-env.d.ts && \
     chown -R nextjs:nodejs /app && \
-    chmod -R 755 /app
+    chmod -R 775 /app
 
 # Switch to non-root user
 USER nextjs
@@ -27,6 +31,6 @@ EXPOSE 3000
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:3000 || exit 1
+    CMD curl -f http://localhost:3000/api/health || exit 1
 
 CMD ["npm", "run", "dev"]
