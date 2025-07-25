@@ -59,11 +59,11 @@ services:
     environment:
       - NODE_ENV=production
     ports:
-       - ":3000"
+       - "3000:3000"
     depends_on:
       - fastapi
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 5
