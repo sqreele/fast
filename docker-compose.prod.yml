@@ -1,8 +1,10 @@
-version: '3.8'
-
 services:
   pm_postgres_db:
+    image: postgres:15
+    container_name: pm_postgres_db
     environment:
+      POSTGRES_USER: pm_user
+      POSTGRES_DB: pm_database
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pm_password}
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
       POSTGRES_HOST_AUTH_METHOD: scram-sha-256
@@ -10,6 +12,13 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - postgres_backups:/backups
     restart: always
+    networks:
+      - pm_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pm_user -d pm_database"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     deploy:
       replicas: 1
       resources:
@@ -53,10 +62,18 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    security_opt:
+      - no-new-privileges:true
 
   fastapi:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: pm-fastapi:latest
+    container_name: pm_fastapi
     environment:
       - DATABASE_URL=postgresql://pm_user:${POSTGRES_PASSWORD:-pm_password}@pm_postgres_db:5432/pm_database
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_password}@redis:6379
       - DEBUG=False
       - LOG_LEVEL=WARNING
       - SECRET_KEY=${SECRET_KEY}
@@ -64,6 +81,18 @@ services:
       - PYTHONUNBUFFERED=1
       - WORKERS=4
     restart: always
+    networks:
+      - pm_network
+    depends_on:
+      pm_postgres_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       replicas: 2
       resources:
@@ -87,6 +116,8 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    security_opt:
+      - no-new-privileges:true
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.fastapi.rule=Host(`api.yourdomain.com`)"
@@ -94,6 +125,11 @@ services:
       - "traefik.http.routers.fastapi.tls.certresolver=letsencrypt"
 
   frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    image: pm-frontend:latest
+    container_name: pm_frontend
     environment:
       - NODE_ENV=production
       - NEXTAUTH_URL=${NEXTAUTH_URL}
@@ -102,6 +138,15 @@ services:
       - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
       - NEXT_TELEMETRY_DISABLED=1
     restart: always
+    networks:
+      - pm_network
+    depends_on:
+      - fastapi
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       replicas: 2
       resources:
@@ -125,6 +170,8 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    security_opt:
+      - no-new-privileges:true
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=Host(`yourdomain.com`)"
@@ -132,6 +179,8 @@ services:
       - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
 
   nginx:
+    image: nginx:alpine
+    container_name: pm_nginx
     ports:
       - "80:80"
       - "443:443"
@@ -141,6 +190,16 @@ services:
       - nginx_cache:/var/cache/nginx
       - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
     restart: always
+    networks:
+      - pm_network
+    depends_on:
+      - frontend
+      - fastapi
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -159,6 +218,8 @@ services:
       options:
         max-size: "50m"
         max-file: "5"
+    security_opt:
+      - no-new-privileges:true
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.nginx.rule=Host(`yourdomain.com`)"
@@ -293,6 +354,10 @@ services:
     security_opt:
       - no-new-privileges:true
 
+networks:
+  pm_network:
+    driver: bridge
+
 volumes:
   postgres_data:
     driver: local
@@ -309,4 +374,4 @@ volumes:
   prometheus_data:
     driver: local
   grafana_data:
-    driver: local 
+    driver: local
