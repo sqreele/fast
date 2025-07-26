@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 from pydantic import BaseModel, Field
 from jose import JWTError, jwt
+import redis
+import os
 
 from database import get_db
 from models.models import User, UserRole, UserPropertyAccess, AccessLevel
@@ -17,7 +19,6 @@ from schemas import UserCreate, User as UserSchema, MessageResponse
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
 # JWT Configuration
-import os
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")  # Use environment variable
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
@@ -28,8 +29,43 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # HTTP Bearer scheme for token authentication
 security = HTTPBearer()
 
-# Token blacklist (in production, use Redis or database)
-blacklisted_tokens = set()
+# Token blacklist - use Redis if available, fallback to in-memory
+try:
+    redis_host = os.getenv("REDIS_HOST", "redis")
+    redis_port = int(os.getenv("REDIS_PORT", "6379"))
+    redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
+    redis_client.ping()  # Test connection
+    USE_REDIS = True
+    print("Using Redis for token blacklisting")
+except Exception as e:
+    print(f"Redis not available, using in-memory blacklist: {e}")
+    USE_REDIS = False
+    blacklisted_tokens = set()
+
+def blacklist_token(token: str):
+    """Add token to blacklist"""
+    if USE_REDIS:
+        try:
+            # Set with expiration equal to token expiration
+            redis_client.setex(f"blacklist:{token}", ACCESS_TOKEN_EXPIRE_MINUTES * 60, "1")
+        except Exception as e:
+            print(f"Failed to blacklist token in Redis: {e}")
+            # Fallback to in-memory
+            blacklisted_tokens.add(token)
+    else:
+        blacklisted_tokens.add(token)
+
+def is_token_blacklisted(token: str) -> bool:
+    """Check if token is blacklisted"""
+    if USE_REDIS:
+        try:
+            return redis_client.exists(f"blacklist:{token}") > 0
+        except Exception as e:
+            print(f"Failed to check Redis blacklist: {e}")
+            # Fallback to in-memory
+            return token in blacklisted_tokens
+    else:
+        return token in blacklisted_tokens
 
 def get_password_hash(password: str) -> str:
     """Hash a password"""
@@ -56,7 +92,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials, db: Session):
         token = credentials.credentials
         
         # Check if token is blacklisted
-        if token in blacklisted_tokens:
+        if is_token_blacklisted(token):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has been revoked",
@@ -230,9 +266,16 @@ async def logout(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Logout user by blacklisting the token"""
-    token = credentials.credentials
-    blacklisted_tokens.add(token)
-    return MessageResponse(message="Successfully logged out")
+    try:
+        token = credentials.credentials
+        blacklist_token(token)
+        return MessageResponse(message="Successfully logged out")
+    except Exception as e:
+        print(f"Logout error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to logout user"
+        )
 
 @router.post("/change-password", response_model=MessageResponse)
 async def change_password(

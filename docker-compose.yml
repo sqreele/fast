@@ -1,4 +1,16 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: pm_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   fastapi:
     build: ./backend
     container_name: fastapi_app
@@ -6,8 +18,12 @@ services:
     environment:
       - DATABASE_URL=postgresql://pm_user:pm_password@pm_postgres_db:5432/pm_database
       - SECRET_KEY=your-secret-key-here
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       pm_postgres_db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - ./backend:/app
