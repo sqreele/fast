@@ -14,7 +14,7 @@ interface ErrorResponse {
 
 // Create axios instance
 const api = axios.create({
-  baseURL: '/api/v1', // Use relative URL to go through nginx
+  baseURL: '/', // Use root relative URL to go through nginx
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -56,10 +56,8 @@ api.interceptors.response.use(
       
       switch (status) {
         case 401:
-          console.error('Unauthorized access - redirecting to login');
-          if (typeof window !== 'undefined') {
-            window.location.href = '/api/auth/signin'; // Fixed typo in signin
-          }
+          console.error('Unauthorized access');
+          // Don't auto-redirect on 401 to allow proper logout flow
           break;
         case 403:
           console.error('Forbidden access');

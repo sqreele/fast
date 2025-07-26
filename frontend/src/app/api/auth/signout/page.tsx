@@ -1,24 +1,25 @@
 'use client';
 
-import { signOut } from 'next-auth/react';
 import { useState } from 'react';
-import Link from 'next/link';
+import { useAuth } from '../../../../hooks/useAuth';
 
 export default function SignOut() {
+  const { logout } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
-      await signOut({ callbackUrl: '/' });
+      await logout();
     } catch (error) {
       console.error('Sign out error:', error);
+    } finally {
       setIsSigningOut(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
@@ -29,7 +30,7 @@ export default function SignOut() {
           </p>
         </div>
         
-        <div className="mt-8 space-y-6">
+        <div className="space-y-4">
           <button
             onClick={handleSignOut}
             disabled={isSigningOut}
@@ -38,12 +39,12 @@ export default function SignOut() {
             {isSigningOut ? 'Signing out...' : 'Sign Out'}
           </button>
           
-          <Link
-            href="/"
+          <button
+            onClick={() => window.history.back()}
             className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Cancel
-          </Link>
+          </button>
         </div>
       </div>
     </div>

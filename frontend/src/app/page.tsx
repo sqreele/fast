@@ -1,15 +1,16 @@
 'use client';
 
-import { signIn, signOut, useSession, getSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAuth } from "../hooks/useAuth";
 
 interface SystemStatus {
   status: string;
 }
 
 export default function Dashboard() {
-  const { data: session } = useSession();
+  const { session, isAuthenticated, logout } = useAuth();
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
 
   const checkHealth = async () => {
@@ -62,47 +63,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <button
-              onClick={async () => {
-                console.log('Logout button clicked');
-                try {
-                  // First, call the backend logout endpoint to blacklist the token
-                  const session = await getSession();
-                  if (session?.accessToken) {
-                    try {
-                      // Use the nginx proxy URL which routes to the backend
-                      const logoutUrl = '/api/v1/auth/logout';
-                      console.log('Calling backend logout at:', logoutUrl);
-                      
-                      const response = await fetch(logoutUrl, {
-                        method: 'POST',
-                        headers: {
-                          'Authorization': `Bearer ${session.accessToken}`,
-                          'Content-Type': 'application/json'
-                        }
-                      });
-                      
-                      if (response.ok) {
-                        console.log('Backend logout successful');
-                      } else {
-                        console.warn('Backend logout failed with status:', response.status);
-                      }
-                    } catch (backendError) {
-                      console.warn('Backend logout failed:', backendError);
-                    }
-                  }
-                  
-                  // Then clear the NextAuth session
-                  await signOut({ 
-                    callbackUrl: '/',
-                    redirect: true 
-                  });
-                  console.log('SignOut completed');
-                } catch (error) {
-                  console.error('SignOut error:', error);
-                  // Force redirect to home page even if there's an error
-                  window.location.href = '/';
-                }
-              }}
+              onClick={logout}
               className="px-6 py-2 bg-gray-200 text-indigo-700 rounded-lg shadow hover:bg-gray-300 transition"
             >
               Logout
