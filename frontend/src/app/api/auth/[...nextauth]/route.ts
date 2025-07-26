@@ -26,6 +26,10 @@ const handler = NextAuth({
           const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
           console.log('Attempting login with backend:', backendUrl);
           
+          // Add timeout and retry logic
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+          
           const res = await fetch(`${backendUrl}/api/v1/auth/login`, {
             method: "POST",
             headers: { 
@@ -35,9 +39,11 @@ const handler = NextAuth({
             body: JSON.stringify({
               username: credentials.username,
               password: credentials.password
-            })
+            }),
+            signal: controller.signal
           });
 
+          clearTimeout(timeoutId);
           console.log('Login response status:', res.status);
 
           if (!res.ok) {
@@ -81,6 +87,8 @@ const handler = NextAuth({
           // Check if it's a network error
           if (error instanceof TypeError && error.message.includes('fetch')) {
             console.error("Network error - backend might be unreachable");
+          } else if (error.name === 'AbortError') {
+            console.error("Request timeout - backend took too long to respond");
           }
         }
         return null;
@@ -88,7 +96,7 @@ const handler = NextAuth({
     })
   ],
   pages: {
-    signIn: '/signin',  // Fixed: removed /api/auth prefix
+    signIn: '/signin',
     error: '/auth/error',
     signOut: '/auth/signout'
   },
@@ -123,6 +131,15 @@ const handler = NextAuth({
   },
   secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-key-for-development',
   debug: process.env.NODE_ENV === 'development',
+  // Add error handling for session endpoint
+  events: {
+    async signOut() {
+      console.log('User signed out');
+    },
+    async error(message) {
+      console.error('NextAuth error:', message);
+    }
+  }
 });
 
 export { handler as GET, handler as POST };

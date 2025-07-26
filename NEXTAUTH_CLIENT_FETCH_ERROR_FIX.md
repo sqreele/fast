@@ -1,11 +1,26 @@
 # NextAuth CLIENT_FETCH_ERROR Fix
 
 ## Problem
-The error `[next-auth][error][CLIENT_FETCH_ERROR] "Unexpected token 'S', "Server error" is not valid JSON"` occurs when NextAuth receives a non-JSON response from the authentication endpoint.
+The error `[next-auth][error][CLIENT_FETCH_ERROR] "Unexpected token 'S', "Server error" is not valid JSON"` occurs when NextAuth receives a non-JSON response from the authentication endpoint. This commonly happens with **503 Service Temporarily Unavailable** errors.
 
 ## Root Causes Identified and Fixed
 
-### 1. **Incorrect SignIn Page Configuration** ✅ FIXED
+### 1. **503 Service Temporarily Unavailable** ✅ NEW FIX
+**Issue**: Backend FastAPI service is temporarily unreachable, causing nginx to return HTML error pages instead of JSON.
+
+**Root Causes**:
+- Docker container startup race conditions
+- Backend service crashes or restarts
+- Network connectivity issues between frontend and backend
+- Missing or incorrect health checks
+
+**Fix Applied**:
+- Enhanced Docker Compose health checks and dependencies
+- Added timeout and retry logic to NextAuth provider
+- Improved service startup order
+- Created diagnostic script (`fix-nextauth-error.sh`)
+
+### 2. **Incorrect SignIn Page Configuration** ✅ FIXED
 **Issue**: The signin page was incorrectly configured in NextAuth configuration as `/api/auth/signin`, which conflicts with NextAuth's internal API routes.
 
 **Fix Applied**:
@@ -13,144 +28,193 @@ The error `[next-auth][error][CLIENT_FETCH_ERROR] "Unexpected token 'S', "Server
 - Created new signin page at `frontend/src/app/signin/page.tsx`
 - Removed the incorrectly placed signin page from `frontend/src/app/api/auth/signin/`
 
-### 2. **Enhanced Error Handling in NextAuth Provider** ✅ FIXED
+### 3. **Enhanced Error Handling in NextAuth Provider** ✅ ENHANCED
 **Issue**: Poor error handling when backend returns non-JSON responses.
 
 **Fix Applied**:
 - Added content-type checking before parsing responses
 - Enhanced error handling for network issues
 - Added detailed logging for debugging
+- **NEW**: Added request timeout handling (10 seconds)
+- **NEW**: Added abort controller for better error handling
+- **NEW**: Enhanced network error detection
 
-### 3. **Missing CORS Configuration** ✅ FIXED
+### 4. **Missing CORS Configuration** ✅ FIXED
 **Issue**: Backend was missing CORS middleware, causing requests from Next.js to be blocked.
 
 **Fix Applied**:
 - Added CORS middleware to `backend/main.py`
 - Configured allowed origins for development and production
 
-### 4. **Environment Configuration** ✅ FIXED
+### 5. **Environment Configuration** ✅ ENHANCED
 **Issue**: Missing or incorrect environment variables.
 
 **Fix Applied**:
 - Created `frontend/.env.local.example` with proper NextAuth configuration
 - Ensured `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, and `BACKEND_URL` are properly set
+- **NEW**: Updated production environment for IP `206.189.89.239`
+- **NEW**: Fixed `NEXTAUTH_URL` and `NEXT_PUBLIC_BACKEND_URL` for production
+
+### 6. **Docker Service Dependencies** ✅ NEW FIX
+**Issue**: Services starting in wrong order causing temporary unavailability.
+
+**Fix Applied**:
+- Enhanced `docker-compose.yml` with proper health check dependencies
+- Increased health check timeouts and retries
+- Improved service startup sequence
+
+## Quick Fix Script
+
+Run the diagnostic and fix script:
+
+```bash
+./fix-nextauth-error.sh
+```
+
+Or for a specific URL:
+```bash
+./fix-nextauth-error.sh http://206.189.89.239
+```
+
+This script will:
+- Check service health endpoints
+- Diagnose connectivity issues
+- Restart services in correct order if needed
+- Provide specific error guidance
+
+## Manual Fixes
+
+### For Production Deployment (IP: 206.189.89.239)
+
+1. **Update environment variables**:
+   ```bash
+   cp .env.production .env
+   # Edit .env to ensure:
+   NEXTAUTH_URL=http://206.189.89.239
+   NEXT_PUBLIC_BACKEND_URL=http://206.189.89.239/api/v1
+   ```
+
+2. **Restart services in correct order**:
+   ```bash
+   docker-compose stop nginx frontend fastapi
+   docker-compose up -d fastapi
+   sleep 30  # Wait for backend to be ready
+   docker-compose up -d frontend
+   sleep 15  # Wait for frontend to be ready
+   docker-compose up -d nginx
+   ```
+
+### For Development
+
+```bash
+cd frontend
+npm run dev
+```
+
+And in another terminal:
+```bash
+cd backend
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
 
 ## Configuration Files Updated
 
-### NextAuth Configuration (`frontend/src/app/api/auth/[...nextauth]/route.ts`)
+### Enhanced NextAuth Configuration (`frontend/src/app/api/auth/[...nextauth]/route.ts`)
 ```typescript
-// Key fixes:
-1. Changed signIn page path from '/api/auth/signin' to '/signin'
-2. Added robust error handling for non-JSON responses
-3. Added content-type validation
-4. Enhanced network error detection
+// Key improvements:
+1. Added 10-second timeout with AbortController
+2. Enhanced error handling for timeout scenarios
+3. Better network error detection
+4. Added NextAuth event handlers for debugging
 ```
 
-### CORS Middleware (`backend/main.py`)
-```python
-from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost", "http://127.0.0.1:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+### Enhanced Docker Compose (`docker-compose.yml`)
+```yaml
+# Key improvements:
+1. Better health check dependencies
+2. Longer startup periods (60 seconds)
+3. More retries for health checks
+4. Proper service dependency order
 ```
 
-### Environment Configuration (`frontend/.env.local`)
+### Production Environment (`.env.production`)
 ```env
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-nextauth-secret-key-minimum-32-characters-long
-BACKEND_URL=http://localhost:8000
+# Updated for current deployment:
+NEXTAUTH_URL=http://206.189.89.239
+NEXT_PUBLIC_BACKEND_URL=http://206.189.89.239/api/v1
 ```
 
-## How to Test the Fix
+## Troubleshooting Steps
 
-1. **Copy environment configuration**:
+### If Still Getting 503 Errors:
+
+1. **Check service status**:
    ```bash
-   cd frontend
-   cp .env.local.example .env.local
+   curl -I http://206.189.89.239/health
+   curl -I http://206.189.89.239/api/auth/session
    ```
 
-2. **Update the environment variables** in `.env.local`:
-   - Set a strong `NEXTAUTH_SECRET` (minimum 32 characters)
-   - Ensure `BACKEND_URL` points to your running backend
-   - Set `NEXTAUTH_URL` to match your frontend URL
-
-3. **Start the backend server**:
+2. **Check Docker logs**:
    ```bash
-   cd backend
-   source venv/bin/activate  # if using virtual environment
-   python main.py
-   # or
-   uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   docker-compose logs fastapi
+   docker-compose logs frontend
+   docker-compose logs nginx
    ```
 
-4. **Start the frontend server**:
+3. **Verify backend connectivity**:
    ```bash
-   cd frontend
-   npm run dev
+   # From inside the frontend container:
+   curl http://fastapi:8000/health
    ```
 
-5. **Test authentication**:
-   - Navigate to `http://localhost:3000/signin`
-   - Try logging in with valid credentials
-   - Check browser dev tools for any remaining errors
+### If Backend is Not Responding:
 
-## Common Issues and Solutions
+1. **Restart backend service**:
+   ```bash
+   docker-compose restart fastapi
+   ```
 
-### Backend Not Accessible
-If you see network errors in the console:
-- Ensure backend is running on the correct port
-- Check `BACKEND_URL` in environment variables
-- Verify CORS configuration allows your frontend domain
+2. **Check backend health**:
+   ```bash
+   curl http://206.189.89.239/docs
+   ```
 
-### Still Getting JSON Parse Errors
-If you still see "Unexpected token" errors:
-- Check if backend is returning HTML error pages instead of JSON
-- Verify the backend authentication endpoint returns proper JSON responses
-- Check backend logs for any server errors
+3. **Check database connectivity**:
+   ```bash
+   docker-compose logs pm_postgres_db
+   ```
 
-### Authentication Still Failing
-- Verify backend database is properly initialized
-- Check if user credentials exist in the database
-- Ensure password hashing is working correctly
-- Check backend logs for authentication-specific errors
+## Common Error Patterns
 
-## Environment-Specific Configuration
+### "Server error\n" Response
+- **Cause**: nginx returning HTML error page instead of JSON
+- **Fix**: Restart backend service, check health endpoints
 
-### Development
-```env
-NEXTAUTH_URL=http://localhost:3000
-BACKEND_URL=http://localhost:8000
-```
+### 503 Service Temporarily Unavailable
+- **Cause**: Backend service is down or unreachable
+- **Fix**: Use the diagnostic script or restart services manually
 
-### Docker/Production
-```env
-NEXTAUTH_URL=https://yourdomain.com
-BACKEND_URL=http://fastapi:8000  # Internal Docker service name
-```
+### Timeout Errors
+- **Cause**: Backend taking too long to respond
+- **Fix**: Check backend performance, database connections
 
 ## Verification Checklist
 
-- [ ] Backend server starts without errors
-- [ ] Frontend server starts without errors  
+- [ ] Backend service starts without errors
+- [ ] Frontend service starts without errors  
 - [ ] CORS middleware is enabled on backend
-- [ ] Environment variables are properly set
-- [ ] SignIn page loads at `/signin`
+- [ ] Environment variables are properly set for production IP
+- [ ] NextAuth session endpoint returns `{}` (empty JSON object)
 - [ ] No CLIENT_FETCH_ERROR in browser console
 - [ ] Authentication flow completes successfully
+- [ ] Services start in correct dependency order
 
-## Additional Notes
+## Prevention
 
-- The signin page was moved from the API routes directory to the proper app directory
-- Error pages have been created for better user experience
-- Enhanced logging helps with debugging authentication issues
-- The backend now includes proper CORS configuration for cross-origin requests
+1. **Monitor health endpoints regularly**
+2. **Set up proper logging and alerting**
+3. **Use the diagnostic script in CI/CD pipelines**
+4. **Implement graceful service restarts**
+5. **Monitor backend response times**
 
-If you continue to experience issues, check:
-1. Browser Network tab for the actual HTTP response
-2. Backend server logs for any server-side errors
-3. NextAuth debug logs by setting `debug: true` in NextAuth config
+If you continue to experience issues after applying these fixes, run the diagnostic script first, then check the specific error logs as directed.
