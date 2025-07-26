@@ -1,30 +1,81 @@
 'use client';
 
-import { signIn } from 'next-auth/react';
-import { useSearchParams } from 'next/navigation';
-import { Suspense, useState } from 'react';
+import { signIn, getSession } from 'next-auth/react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 
 function SignInContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const callbackUrl = searchParams.get('callbackUrl') || '/';
-  const error = searchParams.get('error');
+  const urlError = searchParams.get('error');
+
+  useEffect(() => {
+    // Check if user is already authenticated
+    getSession().then((session) => {
+      if (session) {
+        router.push(callbackUrl);
+      }
+    });
+  }, [callbackUrl, router]);
+
+  useEffect(() => {
+    if (urlError) {
+      switch (urlError) {
+        case 'CredentialsSignin':
+          setError('Invalid username or password');
+          break;
+        case 'Configuration':
+          setError('Authentication configuration error');
+          break;
+        case 'AccessDenied':
+          setError('Access denied');
+          break;
+        case 'Verification':
+          setError('Verification error');
+          break;
+        default:
+          setError('An authentication error occurred');
+      }
+    }
+  }, [urlError]);
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
     
     const formData = new FormData(e.currentTarget);
     const username = formData.get('username') as string;
     const password = formData.get('password') as string;
 
     try {
-      await signIn('credentials', {
+      const result = await signIn('credentials', {
         username,
         password,
-        callbackUrl,
+        redirect: false,
       });
+
+      if (result?.error) {
+        switch (result.error) {
+          case 'CredentialsSignin':
+            setError('Invalid username or password');
+            break;
+          case 'Configuration':
+            setError('Authentication service unavailable');
+            break;
+          default:
+            setError('An error occurred during sign in');
+        }
+      } else if (result?.ok) {
+        router.push(callbackUrl);
+      }
+    } catch (err) {
+      console.error('Sign in error:', err);
+      setError('An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -41,9 +92,7 @@ function SignInContent() {
         
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            <p className="text-sm">
-              {error === 'CredentialsSignin' ? 'Invalid credentials' : 'An error occurred'}
-            </p>
+            <p className="text-sm">{error}</p>
           </div>
         )}
 

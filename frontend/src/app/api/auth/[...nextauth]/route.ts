@@ -23,7 +23,7 @@ const handler = NextAuth({
 
         try {
           // Use internal service name for backend communication
-          const backendUrl = process.env.BACKEND_URL || 'http://fastapi:8000';
+          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
           console.log('Attempting login with backend:', backendUrl);
           
           const res = await fetch(`${backendUrl}/api/v1/auth/login`, {
@@ -41,8 +41,27 @@ const handler = NextAuth({
           console.log('Login response status:', res.status);
 
           if (!res.ok) {
-            const errorText = await res.text();
-            console.error('Login failed:', res.status, res.statusText, errorText);
+            let errorMessage = 'Authentication failed';
+            try {
+              const contentType = res.headers.get('content-type');
+              if (contentType && contentType.includes('application/json')) {
+                const errorData = await res.json();
+                errorMessage = errorData.detail || errorData.message || errorMessage;
+              } else {
+                const errorText = await res.text();
+                console.error('Non-JSON error response:', errorText);
+                errorMessage = 'Server returned non-JSON response';
+              }
+            } catch (parseError) {
+              console.error('Error parsing error response:', parseError);
+            }
+            console.error('Login failed:', res.status, res.statusText, errorMessage);
+            return null;
+          }
+
+          const contentType = res.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+            console.error('Backend returned non-JSON response');
             return null;
           }
 
@@ -59,15 +78,19 @@ const handler = NextAuth({
           }
         } catch (error) {
           console.error("Auth error:", error);
+          // Check if it's a network error
+          if (error instanceof TypeError && error.message.includes('fetch')) {
+            console.error("Network error - backend might be unreachable");
+          }
         }
         return null;
       }
     })
   ],
   pages: {
-    signIn: '/api/auth/signin',  // Fixed typo
-    error: '/api/auth/error',
-    signOut: '/api/auth/signout'
+    signIn: '/signin',  // Fixed: removed /api/auth prefix
+    error: '/auth/error',
+    signOut: '/auth/signout'
   },
   session: {
     strategy: "jwt",
