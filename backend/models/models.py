@@ -477,8 +477,8 @@ class WorkOrder(Base):
     
     # Relationships
     machine = relationship("Machine", back_populates="work_orders", lazy="selectin")
-    created_by = relationship("User", foreign_keys=[created_by_id], back_populates="created_work_orders", overlaps="assigned_work_orders", lazy="selectin")
-    assigned_to = relationship("User", foreign_keys=[assigned_to_id], back_populates="assigned_work_orders", overlaps="created_work_orders", lazy="selectin")
+    created_by = relationship("User", foreign_keys=[created_by_id], back_populates="created_work_orders", overlaps="created_work_orders", lazy="selectin")
+    assigned_to = relationship("User", foreign_keys=[assigned_to_id], back_populates="assigned_work_orders", overlaps="assigned_work_orders", lazy="selectin")
     files = relationship("PMFile", back_populates="work_order", lazy="selectin")
     
     # Indexes
