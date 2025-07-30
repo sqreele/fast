@@ -15,7 +15,7 @@ services:
     build: ./backend
     restart: unless-stopped
     environment:
-      - DATABASE_URL=postgresql://pm_user:pm_password@pm_postgres_db:5432/pm_database
+      - DATABASE_URL=postgresql://pm_user:QlILLYN4kmmkuDzNwGrEsBQ4M@pm_postgres_db:5432/pm_database
       - SECRET_KEY=your-secret-key-here
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -45,7 +45,7 @@ services:
     environment:
       POSTGRES_DB: pm_database
       POSTGRES_USER: pm_user
-      POSTGRES_PASSWORD: pm_password
+      POSTGRES_PASSWORD: QlILLYN4kmmkuDzNwGrEsBQ4M
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql

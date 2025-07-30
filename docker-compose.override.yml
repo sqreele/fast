@@ -7,7 +7,7 @@ services:
     environment:
       - DEBUG=True
       - LOG_LEVEL=DEBUG
-      - DATABASE_URL=postgresql://pm_user:pm_password@pm_postgres_db:5432/pm_database
+      - DATABASE_URL=postgresql://pm_user:QlILLYN4kmmkuDzNwGrEsBQ4M@pm_postgres_db:5432/pm_database
     volumes:
       - ./backend:/app:rw
     read_only: false
