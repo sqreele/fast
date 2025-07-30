@@ -19,3 +19,4 @@ structlog==23.2.0
 python-json-logger==2.0.7
 httpx==0.25.2
 typing_extensions==4.8.0
+click==8.1.7
