@@ -17,6 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libc6-dev \
     libpq-dev \
+    python3-dev \
+    build-essential \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -37,7 +39,7 @@ RUN groupadd -g 1000 appuser && \
 # Copy requirements and install Python dependencies
 COPY requirements.txt requirements-dev.txt ./
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install -r requirements.txt -r requirements-dev.txt
+    pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
 
 # Create necessary directories
 RUN mkdir -p uploads/{images,documents,videos,audio,temp} tmp && \
@@ -56,7 +58,7 @@ FROM base AS deps
 # Copy requirements and install Python dependencies
 COPY requirements.txt ./
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt
 
 # Production stage
 FROM base AS production
@@ -129,4 +131,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 
 EXPOSE 8000
 
-CMD ["/app/start.sh"] 
+CMD ["/app/start.sh"]
+
+# Alias for fastapi target (for compatibility)
+FROM production AS fastapi 
