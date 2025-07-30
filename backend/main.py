@@ -15,8 +15,12 @@ try:
     create_tables()
     logger.info("Database tables created successfully")
 except Exception as e:
-    logger.error(f"Error creating database tables: {e}")
-    # Continue anyway - tables might already exist
+    # Handle ENUM type already exists error
+    if "duplicate key value violates unique constraint" in str(e) and "userrole" in str(e):
+        logger.warning("UserRole enum type already exists, continuing...")
+    else:
+        logger.error(f"Error creating database tables: {e}")
+        # Continue anyway - tables might already exist
 
 app = FastAPI(title="PM System API", version="1.0.0")
 

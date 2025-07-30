@@ -1,15 +1,16 @@
 """
 Admin Manager for PM System
 """
-from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
-from models.models import (
-    User, Property, Room, Machine, Topic, Procedure, 
-    PMSchedule, PMExecution, Issue, Inspection, PMFile,
-    UserRole, FrequencyType, IssuePriority, IssueStatus
-)
+from typing import Dict, Any, List
+from sqlalchemy.orm import Session
 from database import get_db
+from models.models import (
+    User, Property, Room, Machine, Topic, Procedure, PMSchedule, 
+    PMExecution, Issue, Inspection, PMFile, UserPropertyAccess, 
+    WorkOrder, Notification, MaintenanceLog, Job, UserRole
+)
+from routes.auth import get_password_hash
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,21 +23,22 @@ class AdminManager:
         """Get comprehensive system statistics"""
         try:
             stats = {
-                "users": self.db.query(User).count(),
-                "properties": self.db.query(Property).count(),
-                "machines": self.db.query(Machine).count(),
-                "pm_schedules": self.db.query(PMSchedule).count(),
-                "issues": self.db.query(Issue).count(),
-                "overdue_pm": self.db.query(PMSchedule).filter(
-                    PMSchedule.next_due < datetime.utcnow(),
-                    PMSchedule.is_active == True
-                ).count(),
-                "open_issues": self.db.query(Issue).filter(
-                    Issue.status.in_([IssueStatus.OPEN, IssueStatus.ASSIGNED, IssueStatus.IN_PROGRESS])
-                ).count(),
-                "critical_issues": self.db.query(Issue).filter(
-                    Issue.priority == IssuePriority.CRITICAL,
-                    Issue.status.in_([IssueStatus.OPEN, IssueStatus.ASSIGNED, IssueStatus.IN_PROGRESS])
+                "users": {
+                    "total": self.db.query(User).count(),
+                    "active": self.db.query(User).filter(User.is_active == True).count(),
+                },
+                "properties": {
+                    "total": self.db.query(Property).count(),
+                    "active": self.db.query(Property).filter(Property.is_active == True).count(),
+                },
+                "machines": {
+                    "total": self.db.query(Machine).count(),
+                    "active": self.db.query(Machine).filter(Machine.is_active == True).count(),
+                },
+                "pm_schedules": {
+                    "total": self.db.query(PMSchedule).count(),
+                    "overdue": self.db.query(PMSchedule).filter(
+                        PMSchedule.next_due_date < datetime.utcnow()
                 ).count(),
                 "active_users": self.db.query(User).filter(User.is_active == True).count(),
                 "active_machines": self.db.query(Machine).filter(Machine.is_active == True).count(),
@@ -57,7 +59,7 @@ class AdminManager:
             logger.error(f"Error getting system stats: {e}")
             return {"error": str(e)}
     
-    def create_admin_user(self, username: str, email: str, first_name: str, last_name: str) -> User:
+    def create_admin_user(self, username: str, email: str, first_name: str, last_name: str, password: str = "admin123") -> User:
         """Create an admin user"""
         try:
             # Check if admin user already exists
@@ -66,13 +68,17 @@ class AdminManager:
                 logger.warning(f"Admin user {username} already exists")
                 return existing_admin
             
+            # Hash the password
+            hashed_password = get_password_hash(password)
+            
             admin_user = User(
                 username=username,
                 email=email,
                 first_name=first_name,
                 last_name=last_name,
                 role=UserRole.ADMIN,
-                is_active=True
+                is_active=True,
+                password_hash=hashed_password
             )
             self.db.add(admin_user)
             self.db.commit()

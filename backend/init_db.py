@@ -48,8 +48,15 @@ def init_database():
         
         # Create all tables
         logger.info("Creating database tables...")
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database tables created successfully!")
+        try:
+            Base.metadata.create_all(bind=engine)
+            logger.info("Database tables created successfully!")
+        except Exception as e:
+            # Handle ENUM type already exists error
+            if "duplicate key value violates unique constraint" in str(e) and "userrole" in str(e):
+                logger.warning("UserRole enum type already exists, continuing...")
+            else:
+                raise e
         
         # Initialize admin data
         logger.info("Initializing admin data...")
@@ -60,7 +67,8 @@ def init_database():
             username="admin",
             email="admin@pmsystem.com",
             first_name="System",
-            last_name="Administrator"
+            last_name="Administrator",
+            password="admin123"
         )
         logger.info(f"Admin user created: {admin_user.username}")
         
@@ -75,11 +83,13 @@ def init_database():
         # Show system stats
         stats = admin.get_system_stats()
         logger.info("=== System Statistics ===")
-        logger.info(f"Users: {stats['users']['total']} total, {stats['users']['active']} active")
-        logger.info(f"Properties: {stats['properties']['total']} total")
-        logger.info(f"Machines: {stats['machines']['total']} total")
-        logger.info(f"PM Schedules: {stats['pm_schedules']['total']} total, {stats['pm_schedules']['overdue']} overdue")
-        logger.info(f"Issues: {stats['issues']['total']} total, {stats['issues']['open']} open, {stats['issues']['critical']} critical")
+        if isinstance(stats, dict) and 'error' not in stats:
+            logger.info(f"Users: {stats['users']['total']} total, {stats['users']['active']} active")
+            logger.info(f"Properties: {stats['properties']['total']} total")
+            logger.info(f"Machines: {stats['machines']['total']} total")
+            logger.info(f"PM Schedules: {stats['pm_schedules']['total']} total, {stats['pm_schedules']['overdue']} overdue")
+        else:
+            logger.warning(f"Could not get system stats: {stats}")
         
         logger.info("Database initialization completed successfully!")
         return True
