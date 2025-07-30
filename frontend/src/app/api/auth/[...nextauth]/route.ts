@@ -87,7 +87,7 @@ const handler = NextAuth({
           // Check if it's a network error
           if (error instanceof TypeError && error.message.includes('fetch')) {
             console.error("Network error - backend might be unreachable");
-          } else if (error.name === 'AbortError') {
+          } else if (error instanceof Error && error.name === 'AbortError') {
             console.error("Request timeout - backend took too long to respond");
           }
         }
@@ -135,9 +135,6 @@ const handler = NextAuth({
   events: {
     async signOut() {
       console.log('User signed out');
-    },
-    async error(message) {
-      console.error('NextAuth error:', message);
     }
   }
 });
