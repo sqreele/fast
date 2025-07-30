@@ -76,7 +76,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
 
 # Create startup script for production
-RUN echo '#!/bin/sh\n\
+RUN printf '#!/bin/sh\n\
 set -e\n\
 \n\
 echo "=== Next.js Production Startup ==="\n\

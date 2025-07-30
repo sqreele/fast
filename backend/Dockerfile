@@ -91,7 +91,7 @@ echo "Workers: ${WORKERS:-4}"\n\
 # Wait for database with timeout\n\
 echo "Waiting for database connection..."\n\
 timeout=60\n\
-while ! pg_isready -h ${DATABASE_HOST:-pm_postgres_db} -p ${DATABASE_PORT:-5432} -U ${DATABASE_USER:-pm_user}; do\n\
+while ! pg_isready -h ${DATABASE_HOST:-pm_postgres_db} -p ${DATABASE_PORT:-5432} -U ${DATABASE_USER:-pm_user} -d ${DATABASE_NAME:-pm_database}; do\n\
   sleep 2\n\
   timeout=$((timeout-2))\n\
   if [ $timeout -le 0 ]; then\n\
