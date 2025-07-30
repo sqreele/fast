@@ -135,6 +135,8 @@ services:
       - BACKEND_URL=http://fastapi:8000
       - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
       - NEXT_TELEMETRY_DISABLED=1
+    ports:
+      - "3000:3000"
     restart: always
     networks:
       - pm_network
