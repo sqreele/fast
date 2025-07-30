@@ -97,8 +97,8 @@ const handler = NextAuth({
   ],
   pages: {
     signIn: '/signin',
-    error: '/auth/error',
-    signOut: '/auth/signout'
+    error: '/api/auth/error',
+    signOut: '/api/auth/signout'
   },
   session: {
     strategy: "jwt",
