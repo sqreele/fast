@@ -1,0 +1,106 @@
+# Simple single-stage Dockerfile for FastAPI
+FROM python:3.12-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONPATH=/app
+
+WORKDIR /app
+
+# Install system dependencies
+RUN set -ex && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        postgresql-client \
+        gcc \
+        libc6-dev \
+        libpq-dev \
+        python3-dev \
+        build-essential && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /var/cache/apt/*
+
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Copy requirements first for better caching
+COPY requirements.txt ./
+
+# Install Python dependencies with retry logic and proper error handling
+RUN set -ex && \
+    python -m pip install --upgrade pip setuptools wheel && \
+    python -m pip install --no-cache-dir --timeout=300 --retries=3 -r requirements.txt
+
+# Create necessary directories
+RUN mkdir -p uploads/{images,documents,videos,audio,temp} tmp logs && \
+    chown -R appuser:appuser /app
+
+# Copy application code
+COPY --chown=appuser:appuser . .
+
+# Remove unnecessary files
+RUN rm -rf requirements-dev.txt tests/ .pytest_cache/ __pycache__/ .git/ .gitignore
+
+# Create startup script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+echo "=== FastAPI Startup ==="\n\
+echo "Environment: ${NODE_ENV:-production}"\n\
+echo "Debug: ${DEBUG:-False}"\n\
+echo "Workers: ${WORKERS:-4}"\n\
+\n\
+# Wait for database\n\
+echo "Waiting for database connection..."\n\
+timeout=60\n\
+while ! pg_isready -h ${DATABASE_HOST:-pm_postgres_db} -p ${DATABASE_PORT:-5432} -U ${DATABASE_USER:-pm_user} -d ${DATABASE_NAME:-pm_database} 2>/dev/null; do\n\
+  sleep 2\n\
+  timeout=$((timeout-2))\n\
+  if [ $timeout -le 0 ]; then\n\
+    echo "Database connection timeout!"\n\
+    exit 1\n\
+  fi\n\
+done\n\
+\n\
+echo "Database is ready. Initializing..."\n\
+if [ -f "init_db.py" ]; then\n\
+  python init_db.py\n\
+fi\n\
+\n\
+echo "Starting FastAPI application..."\n\
+if [ "${DEBUG:-False}" = "True" ]; then\n\
+  echo "Starting in development mode with uvicorn"\n\
+  exec uvicorn main:app --host 0.0.0.0 --port 8000 --reload\n\
+else\n\
+  echo "Starting in production mode with gunicorn"\n\
+  exec gunicorn main:app \\\n\
+    --bind 0.0.0.0:8000 \\\n\
+    --workers ${WORKERS:-4} \\\n\
+    --worker-class uvicorn.workers.UvicornWorker \\\n\
+    --worker-connections 1000 \\\n\
+    --max-requests 1000 \\\n\
+    --max-requests-jitter 100 \\\n\
+    --timeout 30 \\\n\
+    --keep-alive 2 \\\n\
+    --log-level ${LOG_LEVEL:-info} \\\n\
+    --access-logfile - \\\n\
+    --error-logfile -\n\
+fi\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+# Set ownership and switch to non-root user
+RUN chown -R appuser:appuser /app
+USER appuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+EXPOSE 8000
+
+CMD ["/app/start.sh"]

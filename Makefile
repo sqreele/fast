@@ -64,6 +64,14 @@ build: ## Build all containers
 	@echo "Building all containers..."
 	docker-compose build --parallel
 
+build-no-buildx: ## Build all containers without buildx (fixes bake errors)
+	@echo "Building all containers without buildx..."
+	DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker-compose -f docker-compose.yml -f docker-compose.no-buildx.yml build --parallel
+
+build-simple: ## Build using simple build script (most reliable)
+	@echo "Building using simple build script..."
+	./build-no-buildx.sh
+
 up: ## Start all services
 	docker-compose up -d
 
