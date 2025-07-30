@@ -13,7 +13,6 @@ services:
 
   fastapi:
     build: ./backend
-    container_name: fastapi_app
     restart: unless-stopped
     environment:
       - DATABASE_URL=postgresql://pm_user:pm_password@pm_postgres_db:5432/pm_database
@@ -28,8 +27,8 @@ services:
     volumes:
       - ./backend:/app
       - ./uploads:/app/uploads
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health", "||", "wget", "--spider", "-q", "http://localhost:8000/health"]
       interval: 30s
@@ -68,7 +67,6 @@ services:
 
   frontend:
     build: ./frontend
-    container_name: nextjs_frontend
     restart: unless-stopped
     environment:
       - NODE_ENV=production
@@ -76,8 +74,8 @@ services:
       - NEXTAUTH_SECRET=your-nextauth-secret-key-change-in-production
       - BACKEND_URL=http://fastapi:8000
       - NEXT_PUBLIC_BACKEND_URL=http://localhost/api/v1
-    ports:
-       - "3000:3000"
+    expose:
+      - "3000"
     depends_on:
       fastapi:
         condition: service_healthy
