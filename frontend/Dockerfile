@@ -11,8 +11,7 @@ RUN apk add --no-cache \
 WORKDIR /app
 
 # Set environment variables
-ENV NEXT_TELEMETRY_DISABLED=1 \
-    NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Dependencies stage
 FROM base AS deps
@@ -20,10 +19,10 @@ FROM base AS deps
 # Copy package files
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 
-# Install dependencies based on the preferred package manager
+# Install all dependencies (including devDependencies) for building
 RUN \
   if [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
+  elif [ -f package-lock.json ]; then npm ci --include=dev; \
   elif [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; \
   else echo "Lockfile not found." && exit 1; \
   fi
@@ -96,6 +95,9 @@ RUN mkdir -p /app/.next/cache && \
     chown -R nextjs:nodejs /app
 
 WORKDIR /app
+
+# Set production environment
+ENV NODE_ENV=production
 
 # Copy built application from builder stage
 COPY --from=builder --chown=nextjs:nodejs /app/next.config.* ./
