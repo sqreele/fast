@@ -130,8 +130,8 @@ class User(Base):
     inspections = relationship("Inspection", back_populates="inspector", lazy="selectin")
     property_access = relationship("UserPropertyAccess", back_populates="user", lazy="selectin")
     notifications = relationship("Notification", back_populates="user", lazy="selectin")
-    created_work_orders = relationship("WorkOrder", foreign_keys="WorkOrder.created_by_id", lazy="selectin")
-    assigned_work_orders = relationship("WorkOrder", foreign_keys="WorkOrder.assigned_to_id", lazy="selectin")
+    created_work_orders = relationship("WorkOrder", foreign_keys="WorkOrder.created_by_id", back_populates="created_by", lazy="selectin")
+    assigned_work_orders = relationship("WorkOrder", foreign_keys="WorkOrder.assigned_to_id", back_populates="assigned_to", lazy="selectin")
     job_assignments = relationship(
         "JobUserAssignment",
         back_populates="user",
@@ -477,8 +477,8 @@ class WorkOrder(Base):
     
     # Relationships
     machine = relationship("Machine", back_populates="work_orders", lazy="selectin")
-    created_by = relationship("User", foreign_keys=[created_by_id], lazy="selectin")
-    assigned_to = relationship("User", foreign_keys=[assigned_to_id], lazy="selectin")
+    created_by = relationship("User", foreign_keys=[created_by_id], back_populates="created_work_orders", overlaps="created_work_orders", lazy="selectin")
+    assigned_to = relationship("User", foreign_keys=[assigned_to_id], back_populates="assigned_work_orders", overlaps="assigned_work_orders", lazy="selectin")
     files = relationship("PMFile", back_populates="work_order", lazy="selectin")
     
     # Indexes
