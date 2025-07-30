@@ -7,7 +7,7 @@ interface ExtendedUser extends User {
   token?: string;
 }
 
-const handler = NextAuth({
+const authOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -101,7 +101,7 @@ const handler = NextAuth({
     signOut: '/api/auth/signout'
   },
   session: {
-    strategy: "jwt",
+    strategy: "jwt" as const,
     maxAge: 24 * 60 * 60, // 24 hours
   },
   callbacks: {
@@ -122,7 +122,7 @@ const handler = NextAuth({
         }
       };
     },
-    async redirect({ url, baseUrl }) {
+    async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
       // Ensure redirects stay within the app
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       if (new URL(url).origin === baseUrl) return url;
@@ -137,6 +137,8 @@ const handler = NextAuth({
       console.log('User signed out');
     }
   }
-});
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
