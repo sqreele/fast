@@ -17,6 +17,13 @@ def wait_for_database(max_retries=30, retry_interval=2):
     """Wait for database to be ready"""
     logger.info("Waiting for database to be ready...")
     
+    # Log the database URL being used (without password for security)
+    db_url = os.getenv("DATABASE_URL", "Not set")
+    if "postgresql" in db_url:
+        # Mask password in log
+        masked_url = db_url.split("://")[0] + "://pm_user:***@" + db_url.split("@")[1]
+        logger.info(f"Using database URL: {masked_url}")
+    
     for attempt in range(max_retries):
         try:
             # Test database connection

@@ -1,3 +1,6 @@
+# Load environment variables from .env.prod
+# Use: docker-compose -f docker-compose.prod.yml --env-file .env.prod up
+
 services:
   pm_postgres_db:
     image: postgres:15
@@ -6,8 +9,9 @@ services:
       POSTGRES_USER: pm_user
       POSTGRES_DB: pm_database
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pm_password}
-      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
-      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      # Removed auth restrictions that might cause issues
+      # POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      # POSTGRES_HOST_AUTH_METHOD: scram-sha-256
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - postgres_backups:/backups

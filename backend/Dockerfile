@@ -56,8 +56,7 @@ FROM base AS deps
 # Copy requirements and install Python dependencies
 COPY requirements.txt ./
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-deps -r requirements.txt && \
-    pip install gunicorn[gthread]==21.2.0
+    pip install -r requirements.txt
 
 # Production stage
 FROM base AS production

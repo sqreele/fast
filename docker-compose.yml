@@ -19,6 +19,8 @@ services:
       - SECRET_KEY=your-secret-key-here
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - DEBUG=True
+      - WORKERS=1
     depends_on:
       pm_postgres_db:
         condition: service_healthy
