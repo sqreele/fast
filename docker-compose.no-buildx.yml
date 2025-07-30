@@ -1,0 +1,32 @@
+# Docker Compose override to avoid buildx issues
+# Use: docker-compose -f docker-compose.yml -f docker-compose.no-buildx.yml up --build
+
+version: '3.8'
+
+services:
+  fastapi:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.simple
+    image: pm-fastapi:latest
+    environment:
+      - DOCKER_BUILDKIT=0
+      - COMPOSE_DOCKER_CLI_BUILD=0
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: pm-frontend:latest
+    environment:
+      - DOCKER_BUILDKIT=0
+      - COMPOSE_DOCKER_CLI_BUILD=0
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: pm-nginx:latest
+    environment:
+      - DOCKER_BUILDKIT=0
+      - COMPOSE_DOCKER_CLI_BUILD=0
