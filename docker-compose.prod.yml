@@ -67,7 +67,7 @@ services:
 
   fastapi:
     build: 
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     image: pm-fastapi:latest
     environment:
