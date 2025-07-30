@@ -1,38 +1,16 @@
-# Remove version field - it's obsolete
+version: '3.8'
+
 services:
-  fastapi:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
-    environment:
-      - DEBUG=True
-      - LOG_LEVEL=DEBUG
-      - DATABASE_URL=postgresql://pm_user:QlILLYN4kmmkuDzNwGrEsBQ4M@pm_postgres_db:5432/pm_database
-    volumes:
-      - ./backend:/app:rw
-    read_only: false
-    tmpfs: []  # Override read-only tmpfs from main compose
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    environment:
-      - NODE_ENV=development
-      - NEXTAUTH_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=dev-secret-key
-      - BACKEND_URL=http://fastapi:8000
-      - NEXT_PUBLIC_BACKEND_URL=http://fastapi:8000/api/v1
-    volumes:
-      - ./frontend:/app:rw
-      - /app/node_modules
-      - /app/.next
-      - nextjs_cache:/app/.next/cache  # Only use volume, not tmpfs
-    read_only: false
-    tmpfs: []  # Clear tmpfs from main compose to avoid conflicts
-    command: ["npm", "run", "dev"]
+    depends_on:
+      # Temporarily removed fastapi dependency due to database auth issues
+      # fastapi:
+      #   condition: service_healthy
 
-volumes:
-  nextjs_cache:
-    driver: local
+  nginx:
+    depends_on:
+      # Temporarily removed fastapi dependency due to database auth issues
+      # fastapi:
+      #   condition: service_healthy
+      frontend:
+        condition: service_healthy
