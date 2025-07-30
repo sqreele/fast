@@ -1,7 +1,10 @@
 #!/bin/bash
+set -e
 
-echo "Waiting for database..."
-python init_db.py
+echo "=== FastAPI Startup ==="
+echo "Environment: $NODE_ENV"
+echo "Database URL: ${DATABASE_URL}"
 
-echo "Starting FastAPI application..."
-uvicorn main:app --host 0.0.0.0 --port 8000 
+echo "Starting FastAPI server with simple configuration for testing..."
+
+exec uvicorn main_simple:app --host 0.0.0.0 --port 8000 --log-level info 
