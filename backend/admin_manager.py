@@ -39,7 +39,8 @@ class AdminManager:
                     "total": self.db.query(PMSchedule).count(),
                     "overdue": self.db.query(PMSchedule).filter(
                         PMSchedule.next_due_date < datetime.utcnow()
-                ).count(),
+                    ).count(),
+                },
                 "active_users": self.db.query(User).filter(User.is_active == True).count(),
                 "active_machines": self.db.query(Machine).filter(Machine.is_active == True).count(),
                 "total_pm_executions": self.db.query(PMExecution).count(),
