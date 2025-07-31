@@ -14,8 +14,8 @@ services:
   fastapi:
     build:
       context: ./backend
-      target: development  # ✅ Correctly nested under build
-    restart: unless-stopped  # ✅ At same level as build
+      target: development
+    restart: unless-stopped
     environment:
       - DATABASE_URL=postgresql://pm_user:QlILLYN4kmmkuDzNwGrEsBQ4M@pm_postgres_db:5432/pm_database
       - SECRET_KEY=your-secret-key-here
@@ -24,21 +24,13 @@ services:
       - DEBUG=True
       - WORKERS=1
     depends_on:
-      pm_postgres_db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - pm_postgres_db  # Simplified dependency
+      - redis
     volumes:
       - ./backend:/app
       - ./uploads:/app/uploads
-    expose:
-      - "8000"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health", "||", "wget", "--spider", "-q", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+    ports:
+      - "8000:8000"  # Added for direct access
 
   pm_postgres_db:
     image: postgres:15
@@ -66,34 +58,26 @@ services:
     ports:
       - "8081:8080"
     depends_on:
-      pm_postgres_db:
-        condition: service_healthy
+      - pm_postgres_db
 
   frontend:
     build:
       context: ./frontend
-      target: development  # ✅ Changed to development for dev mode
+      target: development
     restart: unless-stopped
     environment:
-      - NODE_ENV=development  # ✅ Changed to development
+      - NODE_ENV=development
       - NEXTAUTH_URL=http://localhost
       - NEXTAUTH_SECRET=your-nextauth-secret-key-change-in-production
       - BACKEND_URL=http://fastapi:8000
-      - NEXT_PUBLIC_BACKEND_URL=http://localhost/api/v1
-    volumes:  # ✅ Added volumes for development
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8000/api/v1
+    volumes:
       - ./frontend:/app
       - /app/node_modules
-    expose:
-      - "3000"
+    ports:
+      - "3000:3000"  # Added for direct access
     depends_on:
-      fastapi:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+      - fastapi  # Simplified dependency
 
   nginx:
     build: ./nginx
@@ -103,18 +87,10 @@ services:
       - "80:80"
       - "443:443"
     depends_on:
-      fastapi:
-        condition: service_healthy
-      frontend:
-        condition: service_healthy
+      - fastapi   # Simplified dependency
+      - frontend
     volumes:
       - ./nginx/ssl:/etc/nginx/ssl:ro
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 90s
 
 volumes:
   postgres_data:

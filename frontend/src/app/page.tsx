@@ -1,6 +1,6 @@
 'use client';
 
-import { signIn } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../hooks/useAuth";
@@ -15,7 +15,7 @@ export default function Dashboard() {
 
   const checkHealth = async () => {
     try {
-      const response = await fetch('/api/health');
+      const response = await fetch('/health');
       if (response.ok) {
         const data = await response.json() as SystemStatus;
         setSystemStatus(data);
@@ -63,10 +63,10 @@ export default function Dashboard() {
             </div>
           ) : (
             <button
-              onClick={logout}
+              onClick={() => signOut({ callbackUrl: '/signin' })}
               className="px-6 py-2 bg-gray-200 text-indigo-700 rounded-lg shadow hover:bg-gray-300 transition"
             >
-              Logout
+              Sign Out
             </button>
           )}
         </div>

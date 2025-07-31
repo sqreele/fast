@@ -133,8 +133,25 @@ const authOptions = {
   debug: process.env.NODE_ENV === 'development',
   // Add error handling for session endpoint
   events: {
-    async signOut() {
+    async signOut({ token }: { token: JWT }) {
       console.log('User signed out');
+      
+      // Call backend logout endpoint to blacklist the token
+      if (token?.accessToken) {
+        try {
+          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+          await fetch(`${backendUrl}/api/v1/auth/logout`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token.accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          console.log('Backend logout called successfully');
+        } catch (error) {
+          console.error('Failed to call backend logout:', error);
+        }
+      }
     }
   }
 };
