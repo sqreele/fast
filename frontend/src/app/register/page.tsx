@@ -254,7 +254,7 @@ export default function Register() {
       
       setTimeout(() => {
         addDebugLog('info', 'Redirecting to login page');
-        router.push('/api/auth/signin?message=Registration successful, please sign in');
+        router.push('/signin?message=Registration successful, please sign in');
       }, 2000);
 
     } catch (error) {
@@ -322,7 +322,7 @@ export default function Register() {
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
-            <Link href="/api/auth/signin" className="font-medium text-indigo-600 hover:text-indigo-500">
+            <Link href="/signin" className="font-medium text-indigo-600 hover:text-indigo-500">
               sign in to your existing account
             </Link>
           </p>

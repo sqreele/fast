@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
       <div class="container">
         <h1>Authentication Error</h1>
         <p>${errorMessage}</p>
-        <a href="/api/auth/signin" class="button button-primary">Try Again</a>
+        <a href="/signin" class="button button-primary">Try Again</a>
         <a href="/" class="button button-secondary">Go Home</a>
       </div>
     </body>

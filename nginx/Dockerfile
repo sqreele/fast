@@ -1,5 +1,8 @@
 FROM nginx:1.25-alpine
 
+# Build argument to specify which nginx config to use
+ARG NGINX_CONFIG=nginx.conf
+
 # Install additional packages
 RUN apk add --no-cache \
     curl \
@@ -30,7 +33,7 @@ RUN mkdir -p \
     chown -R nginx:nginx /var/cache/nginx /var/log/nginx /etc/nginx /var/www
 
 # Copy custom nginx configuration files
-COPY nginx.conf /etc/nginx/nginx.conf
+COPY ${NGINX_CONFIG} /etc/nginx/nginx.conf
 COPY default.conf security-headers.conf gzip.conf /etc/nginx/conf.d/
 
 # Generate self-signed SSL certificate for local development
