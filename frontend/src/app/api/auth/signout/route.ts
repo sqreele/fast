@@ -82,6 +82,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // Handle POST requests for signout (redirect to GET)
-  return NextResponse.redirect(new URL('/api/auth/signout', request.url));
+  // Handle POST requests for signout (redirect directly to signin page)
+  return NextResponse.redirect(new URL('/signin', request.url));
 }
