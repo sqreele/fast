@@ -1,6 +1,7 @@
 import { useSession, signOut, getSession } from 'next-auth/react';
 import { useCallback } from 'react';
 import { authApi } from '../services/api';
+import { getAuthBaseUrl, getSignoutCallbackUrl } from '../lib/auth-utils';
 
 export const useAuth = () => {
   const { data: session, status } = useSession();
@@ -37,17 +38,23 @@ export const useAuth = () => {
       
       console.log('🚪 Attempting NextAuth signOut...');
       
-      // Then clear the NextAuth session
+      // Get the proper callback URL for signout
+      const callbackUrl = getSignoutCallbackUrl();
+      console.log('Using callback URL for signout:', callbackUrl);
+      
+      // Then clear the NextAuth session with proper URL handling
       const signOutResult = await signOut({ 
-        callbackUrl: '/',
-        redirect: false  // Change this to false temporarily for debugging
+        callbackUrl,
+        redirect: false  // Keep false to prevent automatic redirect with invalid URLs
       });
       
       console.log('✅ NextAuth signOut completed:', signOutResult);
       
-      // Manual redirect after successful signOut
-      console.log('🔄 Redirecting to home page...');
-      window.location.href = '/';
+      // Manual redirect after successful signOut with proper URL
+      console.log('🔄 Redirecting to signin page...');
+      if (typeof window !== 'undefined') {
+        window.location.href = getSignoutCallbackUrl();
+      }
       
     } catch (error) {
       console.error('❌ Logout error:', error);
@@ -58,11 +65,14 @@ export const useAuth = () => {
           stack: error.stack?.substring(0, 200)
         });
       }
-      // Force redirect to home page even if there's an error
-      console.log('🔄 Force redirecting due to error...');
-      window.location.href = '/';
+      
+      // Even if there's an error, try to redirect to signin page
+      console.log('🔄 Fallback: redirecting to signin page...');
+      if (typeof window !== 'undefined') {
+        window.location.href = getSignoutCallbackUrl();
+      }
     }
-  }, [session, status]); // Add dependencies
+  }, [session, status]);
 
   const isAuthenticated = status === 'authenticated';
   const isLoading = status === 'loading';

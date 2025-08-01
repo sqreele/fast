@@ -100,6 +100,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # Environment variables for runtime
 ENV PORT=3000 \
-    HOSTNAME="0.0.0.0"
+    HOSTNAME="localhost"
 
 CMD ["/app/start.sh"]

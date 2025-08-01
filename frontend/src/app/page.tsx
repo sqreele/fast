@@ -88,7 +88,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <button
-              onClick={() => signOut({ callbackUrl: '/signin' })}
+              onClick={() => logout()}
               className="px-6 py-2 bg-gray-200 text-indigo-700 rounded-lg shadow hover:bg-gray-300 transition"
             >
               Sign Out
