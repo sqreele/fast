@@ -69,9 +69,9 @@ else
     exit 1
 fi
 
-if command_exists docker-compose; then
+if docker compose version >/dev/null 2>&1; then
     print_success "Docker Compose is installed"
-    docker-compose --version
+    docker compose version
 else
     print_error "Docker Compose is not installed"
     exit 1
@@ -157,7 +157,7 @@ echo ""
 # Step 7: Stop and Clean Previous Deployment
 print_status "Step 7: Cleaning previous deployment..."
 print_status "Stopping all containers..."
-docker-compose -f docker-compose.prod.yml down --remove-orphans || print_warning "Some containers were not running"
+docker compose -f docker-compose.prod.yml down --remove-orphans || print_warning "Some containers were not running"
 
 print_status "Removing unused Docker resources..."
 docker system prune -f >/dev/null 2>&1 || true
@@ -166,7 +166,7 @@ echo ""
 # Step 8: Build and Deploy
 print_status "Step 8: Building and deploying services..."
 print_status "Building images..."
-if docker-compose -f docker-compose.prod.yml build; then
+if docker compose -f docker-compose.prod.yml build; then
     print_success "Images built successfully"
 else
     print_error "Failed to build images"
@@ -174,7 +174,7 @@ else
 fi
 
 print_status "Starting services..."
-if docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d; then
+if docker compose -f docker-compose.prod.yml --env-file .env.prod up -d; then
     print_success "Services started successfully"
 else
     print_error "Failed to start services"
@@ -188,38 +188,38 @@ sleep 30
 
 # Check service status
 print_status "Current service status:"
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps
 echo ""
 
 # Step 10: Health Checks
 print_status "Step 10: Performing health checks..."
 
 # Check if nginx is running
-if docker-compose -f docker-compose.prod.yml ps nginx | grep -q "Up"; then
+if docker compose -f docker-compose.prod.yml ps nginx | grep -q "Up"; then
     print_success "Nginx container is running"
     
     # Test nginx configuration
-    if docker-compose -f docker-compose.prod.yml exec -T nginx nginx -t >/dev/null 2>&1; then
+    if docker compose -f docker-compose.prod.yml exec -T nginx nginx -t >/dev/null 2>&1; then
         print_success "Nginx configuration is valid"
     else
         print_error "Nginx configuration has errors"
-        docker-compose -f docker-compose.prod.yml exec -T nginx nginx -t
+        docker compose -f docker-compose.prod.yml exec -T nginx nginx -t
     fi
 else
     print_error "Nginx container is not running"
     print_status "Nginx logs:"
-    docker-compose -f docker-compose.prod.yml logs nginx
+    docker compose -f docker-compose.prod.yml logs nginx
 fi
 
 # Test internal connectivity
 print_status "Testing internal service connectivity..."
-if docker-compose -f docker-compose.prod.yml exec -T nginx curl -s -f http://fastapi:8000/health >/dev/null 2>&1; then
+if docker compose -f docker-compose.prod.yml exec -T nginx curl -s -f http://fastapi:8000/health >/dev/null 2>&1; then
     print_success "Nginx can reach FastAPI backend"
 else
     print_warning "Nginx cannot reach FastAPI backend"
 fi
 
-if docker-compose -f docker-compose.prod.yml exec -T nginx curl -s -f http://frontend:3000/ >/dev/null 2>&1; then
+if docker compose -f docker-compose.prod.yml exec -T nginx curl -s -f http://frontend:3000/ >/dev/null 2>&1; then
     print_success "Nginx can reach Frontend"
 else
     print_warning "Nginx cannot reach Frontend"
@@ -266,7 +266,7 @@ echo ""
 print_status "Step 12: Final status report..."
 echo ""
 echo "=== CONTAINER STATUS ==="
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps
 echo ""
 
 echo "=== PORT MAPPINGS ==="
@@ -276,7 +276,7 @@ echo ""
 echo "=== SERVICE LOGS (last 10 lines) ==="
 for service in nginx fastapi frontend; do
     echo "--- $service ---"
-    docker-compose -f docker-compose.prod.yml logs --tail=10 $service 2>/dev/null || echo "Service $service not found"
+    docker compose -f docker-compose.prod.yml logs --tail=10 $service 2>/dev/null || echo "Service $service not found"
     echo ""
 done
 
@@ -310,8 +310,8 @@ echo ""
 echo "=== RECOMMENDATIONS ==="
 
 # Check if all services are healthy
-healthy_services=$(docker-compose -f docker-compose.prod.yml ps | grep -c "Up.*healthy" || echo "0")
-total_services=$(docker-compose -f docker-compose.prod.yml ps | grep -c "Up" || echo "0")
+healthy_services=$(docker compose -f docker-compose.prod.yml ps | grep -c "Up.*healthy" || echo "0")
+total_services=$(docker compose -f docker-compose.prod.yml ps | grep -c "Up" || echo "0")
 
 if [ "$healthy_services" -eq "$total_services" ] && [ "$total_services" -gt 0 ]; then
     print_success "All services appear to be healthy!"
@@ -325,21 +325,21 @@ else
     echo "⚠️  Some services may need attention:"
     echo ""
     echo "1. Check service logs for errors:"
-    echo "   docker-compose -f docker-compose.prod.yml logs [service_name]"
+    echo "   docker compose -f docker-compose.prod.yml logs [service_name]"
     echo ""
     echo "2. Restart problematic services:"
-    echo "   docker-compose -f docker-compose.prod.yml restart [service_name]"
+    echo "   docker compose -f docker-compose.prod.yml restart [service_name]"
     echo ""
     echo "3. Check nginx configuration:"
-    echo "   docker-compose -f docker-compose.prod.yml exec nginx nginx -t"
+    echo "   docker compose -f docker-compose.prod.yml exec nginx nginx -t"
     echo ""
 fi
 
 echo "📋 Additional monitoring commands:"
-echo "   • View all logs: docker-compose -f docker-compose.prod.yml logs -f"
-echo "   • Check status: docker-compose -f docker-compose.prod.yml ps"
-echo "   • Restart all: docker-compose -f docker-compose.prod.yml restart"
-echo "   • Stop all: docker-compose -f docker-compose.prod.yml down"
+echo "   • View all logs: docker compose -f docker-compose.prod.yml logs -f"
+echo "   • Check status: docker compose -f docker-compose.prod.yml ps"
+echo "   • Restart all: docker compose -f docker-compose.prod.yml restart"
+echo "   • Stop all: docker compose -f docker-compose.prod.yml down"
 echo ""
 
 print_success "Troubleshooting complete!"
