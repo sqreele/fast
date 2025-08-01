@@ -65,12 +65,11 @@ services:
       context: ./frontend
       target: development
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       - NODE_ENV=development
-      - NEXTAUTH_URL=http://localhost
-      - NEXTAUTH_SECRET=your-nextauth-secret-key-change-in-production
       - BACKEND_URL=http://fastapi:8000
-      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8000/api/v1
     volumes:
       - ./frontend:/app
       - /app/node_modules

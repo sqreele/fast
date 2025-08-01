@@ -14,7 +14,7 @@ interface ErrorResponse {
 
 // Create axios instance
 const api = axios.create({
-  baseURL: '/', // Use root relative URL to go through nginx
+  baseURL: '/', // Use root relative URL to go through nginx proxy
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

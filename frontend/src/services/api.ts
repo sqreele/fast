@@ -201,8 +201,13 @@ export const supportApi = {
 // System API
 export const systemApi = {
   getHealth: async () => {
-    const response: AxiosResponse<{ status: string; timestamp: string }> = await api.get('/health');
-    return response.data;
+    try {
+      const response: AxiosResponse<{ status: string; timestamp: string }> = await api.get('/health');
+      return response.data;
+    } catch (error) {
+      console.error('Health check API error:', error);
+      throw error;
+    }
   },
   
   maintenance: async (action: 'start' | 'stop' | 'status') => {
