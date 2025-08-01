@@ -2,10 +2,13 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { User, Session } from "next-auth";
 import type { JWT } from "next-auth/jwt";
+import { sanitizeUrl, getAuthBaseUrl } from "../../../lib/auth-utils";
 
 interface ExtendedUser extends User {
   token?: string;
 }
+
+// Use the shared utility for base URL resolution
 
 const authOptions = {
   providers: [
@@ -19,6 +22,7 @@ const authOptions = {
         console.log('NextAuth authorize called');
         console.log('NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
         console.log('NODE_ENV:', process.env.NODE_ENV);
+        console.log('Computed base URL:', getAuthBaseUrl());
         if (!credentials?.username || !credentials?.password) {
           console.error('Missing credentials');
           return null;
@@ -128,11 +132,8 @@ const authOptions = {
     async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
       console.log('NextAuth redirect called with:', { url, baseUrl });
       
-      // Prevent invalid URLs like 0.0.0.0
-      if (baseUrl.includes('0.0.0.0')) {
-        console.log('Detected invalid 0.0.0.0 baseUrl, using fallback');
-        baseUrl = process.env.NEXTAUTH_URL || 'http://localhost';
-      }
+      // Sanitize the base URL to prevent invalid addresses
+      baseUrl = sanitizeUrl(baseUrl);
       
       // Ensure redirects stay within the app
       if (url.startsWith("/")) {
@@ -140,10 +141,16 @@ const authOptions = {
         console.log('Relative URL redirect to:', redirectUrl);
         return redirectUrl;
       }
-      if (new URL(url).origin === baseUrl) {
-        console.log('Same origin redirect to:', url);
-        return url;
+      
+      try {
+        if (new URL(url).origin === new URL(baseUrl).origin) {
+          console.log('Same origin redirect to:', url);
+          return url;
+        }
+      } catch (error) {
+        console.warn('Error parsing URLs for redirect:', error);
       }
+      
       console.log('Default redirect to baseUrl:', baseUrl);
       return baseUrl;
     }

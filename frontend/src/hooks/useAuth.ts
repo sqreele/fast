@@ -1,6 +1,7 @@
 import { useSession, signOut, getSession } from 'next-auth/react';
 import { useCallback } from 'react';
 import { authApi } from '../services/api';
+import { getAuthBaseUrl, getSignoutCallbackUrl } from '../lib/auth-utils';
 
 export const useAuth = () => {
   const { data: session, status } = useSession();
@@ -37,12 +38,13 @@ export const useAuth = () => {
       
       console.log('🚪 Attempting NextAuth signOut...');
       
-      // Use window.location.origin to ensure we have a proper base URL
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+      // Get the proper callback URL for signout
+      const callbackUrl = getSignoutCallbackUrl();
+      console.log('Using callback URL for signout:', callbackUrl);
       
       // Then clear the NextAuth session with proper URL handling
       const signOutResult = await signOut({ 
-        callbackUrl: `${baseUrl}/signin`,
+        callbackUrl,
         redirect: false  // Keep false to prevent automatic redirect with invalid URLs
       });
       
@@ -51,7 +53,7 @@ export const useAuth = () => {
       // Manual redirect after successful signOut with proper URL
       console.log('🔄 Redirecting to signin page...');
       if (typeof window !== 'undefined') {
-        window.location.href = `${baseUrl}/signin`;
+        window.location.href = getSignoutCallbackUrl();
       }
       
     } catch (error) {
@@ -67,8 +69,7 @@ export const useAuth = () => {
       // Even if there's an error, try to redirect to signin page
       console.log('🔄 Fallback: redirecting to signin page...');
       if (typeof window !== 'undefined') {
-        const baseUrl = window.location.origin;
-        window.location.href = `${baseUrl}/signin`;
+        window.location.href = getSignoutCallbackUrl();
       }
     }
   }, [session, status]);
