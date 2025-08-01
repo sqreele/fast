@@ -143,4 +143,20 @@ def reset_database(db: Session = Depends(get_db), _: bool = Depends(require_admi
             raise HTTPException(status_code=500, detail="Database reset failed")
     except Exception as e:
         logger.error(f"Error resetting database: {e}")
-        raise HTTPException(status_code=500, detail=f"Database reset failed: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Database reset failed: {str(e)}")
+
+@router.get("/")
+def admin_root(_: bool = Depends(require_admin_role)):
+    """Root admin endpoint - provides available admin operations"""
+    return {
+        "message": "PM System Admin API",
+        "version": "1.0.0",
+        "available_endpoints": [
+            "/stats - System statistics",
+            "/setup - Initial system setup", 
+            "/users - User management",
+            "/test - System tests",
+            "/backup - Database backup",
+            "/reset - Database reset"
+        ]
+    } 
