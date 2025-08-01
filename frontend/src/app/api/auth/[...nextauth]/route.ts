@@ -1,187 +1,37 @@
-import NextAuth from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import type { User, Session } from "next-auth";
-import type { JWT } from "next-auth/jwt";
-import { sanitizeUrl, getAuthBaseUrl } from "../../../lib/auth-utils";
+// pages/api/auth/[...nextauth].js or app/api/auth/[...nextauth]/route.ts
+import NextAuth from 'next-auth'
+import type { NextAuthOptions } from 'next-auth'
 
-interface ExtendedUser extends User {
-  token?: string;
-}
-
-// Use the shared utility for base URL resolution
-
-const authOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        username: { label: "Username", type: "text" },
-        password: { label: "Password", type: "password" }
-      },
-      async authorize(credentials): Promise<ExtendedUser | null> {
-        console.log('NextAuth authorize called');
-        console.log('NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
-        console.log('NODE_ENV:', process.env.NODE_ENV);
-        console.log('Computed base URL:', getAuthBaseUrl());
-        if (!credentials?.username || !credentials?.password) {
-          console.error('Missing credentials');
-          return null;
-        }
-
-        try {
-          // Use internal service name for backend communication
-          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
-          console.log('Attempting login with backend:', backendUrl);
-          
-          // Add timeout and retry logic
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-          
-          const res = await fetch(`${backendUrl}/api/v1/auth/login`, {
-            method: "POST",
-            headers: { 
-              "Content-Type": "application/json",
-              "Accept": "application/json"
-            },
-            body: JSON.stringify({
-              username: credentials.username,
-              password: credentials.password
-            }),
-            signal: controller.signal
-          });
-
-          clearTimeout(timeoutId);
-          console.log('Login response status:', res.status);
-
-          if (!res.ok) {
-            let errorMessage = 'Authentication failed';
-            try {
-              const contentType = res.headers.get('content-type');
-              if (contentType && contentType.includes('application/json')) {
-                const errorData = await res.json();
-                errorMessage = errorData.detail || errorData.message || errorMessage;
-              } else {
-                const errorText = await res.text();
-                console.error('Non-JSON error response:', errorText);
-                errorMessage = 'Server returned non-JSON response';
-              }
-            } catch (parseError) {
-              console.error('Error parsing error response:', parseError);
-            }
-            console.error('Login failed:', res.status, res.statusText, errorMessage);
-            return null;
-          }
-
-          const contentType = res.headers.get('content-type');
-          if (!contentType || !contentType.includes('application/json')) {
-            console.error('Backend returned non-JSON response');
-            return null;
-          }
-
-          const user = await res.json() as ExtendedUser;
-          console.log('Login successful for user:', user.name || user.email);
-          
-          if (user && (user.token || user.id || user.email)) {
-            return {
-              id: user.id?.toString() || user.email || user.name || "unknown",
-              name: user.name,
-              email: user.email,
-              token: user.token
-            };
-          }
-        } catch (error) {
-          console.error("Auth error:", error);
-          // Check if it's a network error
-          if (error instanceof TypeError && error.message.includes('fetch')) {
-            console.error("Network error - backend might be unreachable");
-          } else if (error instanceof Error && error.name === 'AbortError') {
-            console.error("Request timeout - backend took too long to respond");
-          }
-        }
-        return null;
-      }
-    })
+    // Your providers here
   ],
   pages: {
-    signIn: '/signin',
+    signIn: '/login',  // Use your custom login page
+    signOut: '/logout', // Use your custom logout page
     error: '/auth/error',
-    signOut: '/signin'
-  },
-  session: {
-    strategy: "jwt" as const,
-    maxAge: 24 * 60 * 60, // 24 hours
   },
   callbacks: {
-    async jwt({ token, user }: { token: JWT; user?: ExtendedUser }): Promise<JWT> {
-      if (user) {
-        token.accessToken = user.token;
-        token.user = user;
+    async jwt({ token, user, account }) {
+      if (account && user) {
+        token.accessToken = account.access_token;
       }
       return token;
     },
-    async session({ session, token }: { session: Session; token: JWT }): Promise<Session> {
-      return {
-        ...session,
-        accessToken: token.accessToken,
-        user: {
-          ...session.user,
-          id: token.user?.id || session.user?.email || "unknown"
-        }
-      };
+    async session({ session, token }) {
+      session.accessToken = token.accessToken;
+      return session;
     },
-    async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
-      console.log('NextAuth redirect called with:', { url, baseUrl });
-      
-      // Sanitize the base URL to prevent invalid addresses
-      baseUrl = sanitizeUrl(baseUrl);
-      
-      // Ensure redirects stay within the app
-      if (url.startsWith("/")) {
-        const redirectUrl = `${baseUrl}${url}`;
-        console.log('Relative URL redirect to:', redirectUrl);
-        return redirectUrl;
-      }
-      
-      try {
-        if (new URL(url).origin === new URL(baseUrl).origin) {
-          console.log('Same origin redirect to:', url);
-          return url;
-        }
-      } catch (error) {
-        console.warn('Error parsing URLs for redirect:', error);
-      }
-      
-      console.log('Default redirect to baseUrl:', baseUrl);
+    async redirect({ url, baseUrl }) {
+      // Always redirect to baseUrl to avoid invalid URLs
+      if (url.startsWith('/')) return `${baseUrl}${url}`;
+      if (new URL(url).origin === baseUrl) return url;
       return baseUrl;
-    }
+    },
   },
-  secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-key-for-development',
-  debug: process.env.NODE_ENV === 'development',
-  // Add error handling for session endpoint
-  events: {
-    async signOut({ token }: { token: JWT }) {
-      console.log('User signed out');
-      
-      // Call backend logout endpoint to blacklist the token
-      if (token?.accessToken) {
-        try {
-          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
-          await fetch(`${backendUrl}/api/v1/auth/logout`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token.accessToken}`,
-              'Content-Type': 'application/json'
-            }
-          });
-          console.log('Backend logout called successfully');
-        } catch (error) {
-          console.error('Failed to call backend logout:', error);
-        }
-      }
-    }
-  }
-};
+  // CRITICAL: Ensure these URLs are correct
+  url: process.env.NEXTAUTH_URL,
+  secret: process.env.NEXTAUTH_SECRET,
+}
 
-const handler = NextAuth(authOptions);
-
-export { handler as GET, handler as POST };
+export default NextAuth(authOptions)
