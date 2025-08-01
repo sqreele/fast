@@ -90,4 +90,13 @@ api.interceptors.response.use(
   }
 );
 
+// Error handler function for use in stores and components
+export const handleApiError = (error: unknown): string => {
+  if (error instanceof Error) {
+    const apiError = error as ApiError;
+    return apiError.message || 'An unexpected error occurred';
+  }
+  return 'An unexpected error occurred';
+};
+
 export default api;
