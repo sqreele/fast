@@ -97,8 +97,8 @@ const authOptions = {
   ],
   pages: {
     signIn: '/signin',
-    error: '/api/auth/error',
-    signOut: '/api/auth/signout'
+    error: '/auth/error',
+    signOut: '/auth/signout'
   },
   session: {
     strategy: "jwt" as const,
