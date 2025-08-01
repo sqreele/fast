@@ -37,17 +37,22 @@ export const useAuth = () => {
       
       console.log('🚪 Attempting NextAuth signOut...');
       
-      // Then clear the NextAuth session
+      // Use window.location.origin to ensure we have a proper base URL
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+      
+      // Then clear the NextAuth session with proper URL handling
       const signOutResult = await signOut({ 
-        callbackUrl: '/',
-        redirect: false  // Change this to false temporarily for debugging
+        callbackUrl: `${baseUrl}/signin`,
+        redirect: false  // Keep false to prevent automatic redirect with invalid URLs
       });
       
       console.log('✅ NextAuth signOut completed:', signOutResult);
       
-      // Manual redirect after successful signOut
-      console.log('🔄 Redirecting to home page...');
-      window.location.href = '/';
+      // Manual redirect after successful signOut with proper URL
+      console.log('🔄 Redirecting to signin page...');
+      if (typeof window !== 'undefined') {
+        window.location.href = `${baseUrl}/signin`;
+      }
       
     } catch (error) {
       console.error('❌ Logout error:', error);
@@ -58,11 +63,15 @@ export const useAuth = () => {
           stack: error.stack?.substring(0, 200)
         });
       }
-      // Force redirect to home page even if there's an error
-      console.log('🔄 Force redirecting due to error...');
-      window.location.href = '/';
+      
+      // Even if there's an error, try to redirect to signin page
+      console.log('🔄 Fallback: redirecting to signin page...');
+      if (typeof window !== 'undefined') {
+        const baseUrl = window.location.origin;
+        window.location.href = `${baseUrl}/signin`;
+      }
     }
-  }, [session, status]); // Add dependencies
+  }, [session, status]);
 
   const isAuthenticated = status === 'authenticated';
   const isLoading = status === 'loading';

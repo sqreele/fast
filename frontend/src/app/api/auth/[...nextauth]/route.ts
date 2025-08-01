@@ -127,6 +127,13 @@ const authOptions = {
     },
     async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
       console.log('NextAuth redirect called with:', { url, baseUrl });
+      
+      // Prevent invalid URLs like 0.0.0.0
+      if (baseUrl.includes('0.0.0.0')) {
+        console.log('Detected invalid 0.0.0.0 baseUrl, using fallback');
+        baseUrl = process.env.NEXTAUTH_URL || 'http://localhost';
+      }
+      
       // Ensure redirects stay within the app
       if (url.startsWith("/")) {
         const redirectUrl = `${baseUrl}${url}`;
