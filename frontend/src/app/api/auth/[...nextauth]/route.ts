@@ -16,6 +16,9 @@ const authOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials): Promise<ExtendedUser | null> {
+        console.log('NextAuth authorize called');
+        console.log('NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
+        console.log('NODE_ENV:', process.env.NODE_ENV);
         if (!credentials?.username || !credentials?.password) {
           console.error('Missing credentials');
           return null;
@@ -123,9 +126,18 @@ const authOptions = {
       };
     },
     async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
+      console.log('NextAuth redirect called with:', { url, baseUrl });
       // Ensure redirects stay within the app
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
-      if (new URL(url).origin === baseUrl) return url;
+      if (url.startsWith("/")) {
+        const redirectUrl = `${baseUrl}${url}`;
+        console.log('Relative URL redirect to:', redirectUrl);
+        return redirectUrl;
+      }
+      if (new URL(url).origin === baseUrl) {
+        console.log('Same origin redirect to:', url);
+        return url;
+      }
+      console.log('Default redirect to baseUrl:', baseUrl);
       return baseUrl;
     }
   },

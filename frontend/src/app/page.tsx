@@ -15,10 +15,35 @@ export default function Dashboard() {
 
   const checkHealth = async () => {
     try {
-      const response = await fetch('/health');
+      const response = await fetch('/health', {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
+      });
       if (response.ok) {
-        const data = await response.json() as SystemStatus;
-        setSystemStatus(data);
+        const text = await response.text();
+        console.log('Health check raw response:', text);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+        
+        // Handle both JSON and plain text responses
+        if (text.trim() === 'healthy') {
+          // If we get plain text "healthy", create a mock status object
+          setSystemStatus({ status: 'healthy' });
+        } else {
+          try {
+            const data = JSON.parse(text) as SystemStatus;
+            setSystemStatus(data);
+          } catch (parseError) {
+            console.error('Failed to parse health check response as JSON:', text);
+            console.error('Parse error:', parseError);
+            // Fallback: if we get any response, assume healthy
+            setSystemStatus({ status: 'unknown' });
+          }
+        }
+      } else {
+        console.error('Health check failed with status:', response.status);
       }
     } catch (error) {
       console.error('Health check failed:', error);
