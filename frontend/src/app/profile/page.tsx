@@ -85,12 +85,25 @@ export default function ProfilePage() {
     try {
       setIsLoading(true);
       const response = await authApi.me();
-      setProfile(response.data);
+      // Convert User type to UserProfile type
+      const userProfile: UserProfile = {
+        id: parseInt(response.data.id),
+        username: response.data.username,
+        email: response.data.email,
+        first_name: response.data.name.split(' ')[0] || '',
+        last_name: response.data.name.split(' ').slice(1).join(' ') || '',
+        phone: '', // User type doesn't have phone
+        role: response.data.role,
+        is_active: true, // Default to true since User type doesn't have is_active
+        created_at: response.data.createdAt,
+        updated_at: response.data.updatedAt
+      };
+      setProfile(userProfile);
       setProfileForm({
-        first_name: response.data.first_name || '',
-        last_name: response.data.last_name || '',
-        phone: response.data.phone || '',
-        email: response.data.email || ''
+        first_name: userProfile.first_name,
+        last_name: userProfile.last_name,
+        phone: userProfile.phone || '',
+        email: userProfile.email
       });
     } catch (err) {
       console.error('Failed to fetch profile:', err);
