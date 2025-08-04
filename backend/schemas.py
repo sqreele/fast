@@ -365,6 +365,14 @@ class UserPropertyAccess(UserPropertyAccessBase):
     user: Optional[User] = None
     property: Optional[Property] = None
 
+class UserPropertyAccessProfile(BaseSchema):
+    """User property access for profile display"""
+    property_id: int
+    property_name: str
+    access_level: AccessLevel
+    granted_at: Optional[datetime]
+    expires_at: Optional[datetime]
+
 # Response schemas
 class PaginatedResponse(BaseSchema):
     items: List[Any]
