@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
-from schemas import User, UserCreate, UserUpdate, UserWithProperties, UserPropertyAccess, UserPropertyAccessCreate
+from schemas import User, UserCreate, UserUpdate, UserWithProperties, UserPropertyAccess, UserPropertyAccessCreate, UserPropertyAccessProfile
 from models.models import User as UserModel, UserPropertyAccess as UserPropertyAccessModel
 from database import get_db
+from routes.auth import get_current_user
 
 router = APIRouter()
 
@@ -112,4 +113,51 @@ def get_user_with_properties(user_id: int, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return user 
+    return user
+
+# Current user endpoints
+@router.get("/users/me", response_model=User)
+def get_current_user_profile(current_user: UserModel = Depends(get_current_user)):
+    """Get current user's profile"""
+    return current_user
+
+@router.put("/users/me", response_model=User)
+def update_current_user_profile(
+    user_update: UserUpdate, 
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update current user's profile"""
+    # Only allow updating certain fields
+    allowed_fields = {'first_name', 'last_name', 'phone', 'email'}
+    update_data = {k: v for k, v in user_update.dict(exclude_unset=True).items() if k in allowed_fields}
+    
+    # Check if email is being changed and if it's already taken
+    if 'email' in update_data and update_data['email'] != current_user.email:
+        existing_user = db.query(UserModel).filter(
+            UserModel.email == update_data['email'],
+            UserModel.id != current_user.id
+        ).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+    
+    for field, value in update_data.items():
+        setattr(current_user, field, value)
+    
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+@router.get("/users/me/properties", response_model=List[UserPropertyAccessProfile])
+def get_current_user_properties(current_user: UserModel = Depends(get_current_user)):
+    """Get current user's property access"""
+    property_access_list = []
+    for access in current_user.property_access:
+        property_access_list.append(UserPropertyAccessProfile(
+            property_id=access.property_id,
+            property_name=access.property.name if access.property else "Unknown Property",
+            access_level=access.access_level,
+            granted_at=access.granted_at,
+            expires_at=access.expires_at
+        ))
+    return property_access_list 
