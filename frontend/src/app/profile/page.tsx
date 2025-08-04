@@ -4,21 +4,8 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authApi } from '../../services/api';
+import { authApi, User } from '../../services/api';
 import LoadingSpinner from '../../components/LoadingSpinner';
-
-interface UserProfile {
-  id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  phone?: string;
-  role: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
 
 interface PropertyAccess {
   property_id: number;
@@ -45,7 +32,7 @@ export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<User | null>(null);
   const [propertyAccess, setPropertyAccess] = useState<PropertyAccess[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
