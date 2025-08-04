@@ -3,9 +3,16 @@ import { create } from 'zustand'
 import { authApi } from '@/services/api'
 
 interface User {
-  id: string
+  id: number
+  username: string
   email: string
-  name: string
+  first_name: string
+  last_name: string
+  phone?: string
+  role: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }
 
 interface AuthState {
