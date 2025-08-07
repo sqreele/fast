@@ -6,9 +6,16 @@ from models.models import *
 from admin import admin_views
 import os
 import logging
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Counter, Histogram
+import time
+from fastapi.responses import Response
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# Prometheus metrics
+REQUEST_COUNT = Counter('http_requests_total', 'Total HTTP requests', ['method', 'endpoint', 'status'])
+REQUEST_LATENCY = Histogram('http_request_duration_seconds', 'HTTP request latency')
 
 # Create database tables
 try:
@@ -32,6 +39,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Middleware for metrics
+@app.middleware("http")
+async def metrics_middleware(request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = time.time() - start_time
+    
+    REQUEST_COUNT.labels(
+        method=request.method,
+        endpoint=request.url.path,
+        status=response.status_code
+    ).inc()
+    
+    REQUEST_LATENCY.observe(duration)
+    
+    return response
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
@@ -61,3 +85,8 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "PM System API"}
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint"""
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
