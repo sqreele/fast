@@ -3,14 +3,27 @@ import { AxiosResponse } from 'axios';
 
 // Types
 export interface User {
-  id: string;
+  id: number;
   username: string;
   email: string;
-  name: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
   role: string;
-  avatar?: string;
-  createdAt: string;
-  updatedAt: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LoginResponse {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  token: string;
+  name: string; // For NextAuth compatibility
 }
 
 export interface Project {
@@ -58,7 +71,7 @@ interface ApiResponse<T> {
 // Auth API
 export const authApi = {
   login: async (credentials: { username: string; password: string }) => {
-    const response: AxiosResponse<ApiResponse<{ user: User; token: string }>> = 
+    const response: AxiosResponse<ApiResponse<LoginResponse>> = 
       await api.post('/api/v1/auth/login', credentials);
     return response.data;
   },

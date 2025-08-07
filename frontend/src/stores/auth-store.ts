@@ -1,15 +1,15 @@
 // stores/auth-store.ts
 import { create } from 'zustand'
-import { authApi } from '@/services/api'
+import { authApi, User } from '@/services/api'
 
-interface User {
+interface AuthUser {
   id: string
   email: string
   name: string
 }
 
 interface AuthState {
-  user: User | null
+  user: AuthUser | null
   token: string | null
   isAuthenticated: boolean
   loading: boolean
@@ -17,7 +17,7 @@ interface AuthState {
   login: (credentials: { username: string; password: string }) => Promise<void>
   logout: () => void
   setToken: (token: string) => void
-  setUser: (user: User) => void
+  setUser: (user: AuthUser) => void
   clearError: () => void
 }
 
@@ -41,7 +41,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // Get user data
         const userResponse = await authApi.me()
         if (userResponse.success) {
-          get().setUser(userResponse.data)
+          // Map API User to AuthUser
+          const authUser: AuthUser = {
+            id: userResponse.data.id.toString(),
+            email: userResponse.data.email,
+            name: `${userResponse.data.first_name} ${userResponse.data.last_name}`
+          }
+          get().setUser(authUser)
         }
       }
     } catch (error: any) {
@@ -71,7 +77,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ token, isAuthenticated: true })
   },
   
-  setUser: (user: User) => {
+  setUser: (user: AuthUser) => {
     set({ user })
   },
   
