@@ -1,12 +1,6 @@
 // stores/auth-store.ts
 import { create } from 'zustand'
-import { authApi } from '@/services/api'
-
-interface User {
-  id: string
-  email: string
-  name: string
-}
+import { authApi, User } from '@/services/api'
 
 interface AuthState {
   user: User | null
