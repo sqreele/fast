@@ -12,14 +12,24 @@ export const getAuthBaseUrl = (): string => {
     return window.location.origin;
   }
   
-  // Server-side environment
+  // Server-side environment - try NEXTAUTH_URL first
   if (process.env.NEXTAUTH_URL) {
     return process.env.NEXTAUTH_URL;
   }
   
   // Fallbacks based on environment
   if (process.env.NODE_ENV === 'production') {
-    return 'http://localhost';
+    // Try to get from NEXT_PUBLIC_BACKEND_URL and extract base URL
+    if (process.env.NEXT_PUBLIC_BACKEND_URL) {
+      try {
+        const url = new URL(process.env.NEXT_PUBLIC_BACKEND_URL);
+        return `${url.protocol}//${url.host}`;
+      } catch (error) {
+        console.warn('Failed to parse NEXT_PUBLIC_BACKEND_URL:', error);
+      }
+    }
+    // Final fallback for production
+    return 'http://206.189.89.239';
   }
   
   return 'http://localhost:3000';
