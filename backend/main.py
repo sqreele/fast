@@ -61,3 +61,16 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "PM System API"}
+
+@app.get("/metrics")
+def get_metrics():
+    """Prometheus metrics endpoint"""
+    return {
+        "status": "ok",
+        "service": "PM System API",
+        "metrics": {
+            "http_requests_total": 0,
+            "http_request_duration_seconds": 0,
+            "active_connections": 0
+        }
+    }
