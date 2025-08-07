@@ -79,7 +79,7 @@ api.interceptors.response.use(
         }
       }
     } else if (error.request) {
-      apiError.message = 'Network error - please check your connection';
+      apiError.message = 'Network error - unable to connect to the server. Please check if the backend service is running.';
       console.error('Network error:', error.message);
     } else {
       apiError.message = error.message || 'An unexpected error occurred';

@@ -73,6 +73,7 @@ export default function ProfilePage() {
   const fetchProfile = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const response = await authApi.me();
       setProfile(response.data);
       setProfileForm({
@@ -81,9 +82,20 @@ export default function ProfilePage() {
         phone: response.data.phone || '',
         email: response.data.email || ''
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch profile:', err);
-      setError('Failed to load profile data');
+      
+      // Provide more specific error messages based on the error type
+      if (err.message?.includes('Network error') || err.message?.includes('fetch')) {
+        setError('Unable to connect to the server. Please check if the backend service is running.');
+      } else if (err.status === 401) {
+        setError('Authentication failed. Please sign in again.');
+        router.push('/signin');
+      } else if (err.status === 404) {
+        setError('Profile endpoint not found. Please contact support.');
+      } else {
+        setError(`Failed to load profile data: ${err.message || 'Unknown error'}`);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -211,14 +223,40 @@ export default function ProfilePage() {
   if (!profile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-red-600">Failed to load profile</p>
-          <button 
-            onClick={fetchProfile}
-            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-          >
-            Retry
-          </button>
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <div className="text-red-500 mb-4">
+              <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Profile Loading Failed</h2>
+            {error && (
+              <p className="text-gray-600 mb-6">{error}</p>
+            )}
+            <div className="space-y-3">
+              <button 
+                onClick={fetchProfile}
+                className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Retry Loading Profile
+              </button>
+              <button 
+                onClick={() => router.push('/signin')}
+                className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Go to Sign In
+              </button>
+            </div>
+            <div className="mt-6 text-sm text-gray-500">
+              <p>If the problem persists, please check:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Your internet connection</li>
+                <li>That the backend service is running</li>
+                <li>Your authentication status</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
     );
