@@ -1,3 +1,20 @@
+#!/bin/bash
+
+# Quick fix for nginx connection issues
+# This script updates the nginx configuration to use localhost instead of Docker container names
+
+set -e
+
+echo "Fixing nginx connection issues..."
+
+# Backup the original nginx configuration
+if [ -f "nginx/nginx.prod.conf" ]; then
+    cp nginx/nginx.prod.conf nginx/nginx.prod.conf.backup
+    echo "Backed up original nginx configuration"
+fi
+
+# Create a fixed nginx configuration that uses localhost
+cat > nginx/nginx.prod.conf << 'EOF'
 user nginx;
 worker_processes auto;
 error_log /var/log/nginx/error.log warn;
@@ -234,3 +251,14 @@ http {
         }
     }
 }
+EOF
+
+echo "Nginx configuration updated to use localhost instead of Docker container names"
+echo ""
+echo "Next steps:"
+echo "1. Start your backend service on port 8000"
+echo "2. Start your frontend service on port 3000"
+echo "3. Restart nginx with the new configuration"
+echo ""
+echo "To start services directly, run: ./start-services-directly.sh start"
+echo "To check service status, run: ./start-services-directly.sh status"
