@@ -71,9 +71,34 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async redirect({ url, baseUrl }) {
+      // Add logging for debugging redirect issues
+      console.log('NextAuth redirect called:', { url, baseUrl });
+      
       // Always redirect to baseUrl to avoid invalid URLs
-      if (url.startsWith('/')) return `${baseUrl}${url}`;
-      if (new URL(url).origin === baseUrl) return url;
+      if (url.startsWith('/')) {
+        const redirectUrl = `${baseUrl}${url}`;
+        console.log('Redirecting to:', redirectUrl);
+        return redirectUrl;
+      }
+      
+      // Check if URL is from the same origin
+      try {
+        if (new URL(url).origin === baseUrl) {
+          console.log('Redirecting to same origin URL:', url);
+          return url;
+        }
+      } catch (error) {
+        console.warn('Invalid URL in redirect:', url, error);
+      }
+      
+      // Ensure we don't redirect to localhost in production
+      if (process.env.NODE_ENV === 'production' && baseUrl.includes('localhost')) {
+        const productionUrl = process.env.NEXTAUTH_URL || 'http://206.189.89.239';
+        console.log('Production environment detected, redirecting to:', productionUrl);
+        return productionUrl;
+      }
+      
+      console.log('Final redirect to baseUrl:', baseUrl);
       return baseUrl;
     },
   },
