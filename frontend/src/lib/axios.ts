@@ -14,9 +14,9 @@ interface ErrorResponse {
 
 // Get API base URL
 const getApiBaseUrl = () => {
-  // For production, use environment variable or relative URLs
+  // For production, use environment variable or empty string to avoid double /api prefix
   if (process.env.NODE_ENV === 'production') {
-    return process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
+    return process.env.NEXT_PUBLIC_API_BASE_URL || '';
   }
   // Development
   return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
