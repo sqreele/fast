@@ -48,7 +48,7 @@ static_path.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 # Initialize SQLAdmin with proper configuration
-admin = Admin(
+sqladmin_instance = Admin(
     app, 
     engine,
     title="PM System Admin",
@@ -313,15 +313,15 @@ class NotificationAdmin(ModelView, model=Notification):
     can_view_details = True
 
 # Register all admin views
-admin.add_view(UserAdmin)
-admin.add_view(PropertyAdmin)
-admin.add_view(RoomAdmin)
-admin.add_view(MachineAdmin)
-admin.add_view(IssueAdmin)
-admin.add_view(PMScheduleAdmin)
-admin.add_view(WorkOrderAdmin)
-admin.add_view(JobAdmin)
-admin.add_view(NotificationAdmin)
+sqladmin_instance.add_view(UserAdmin)
+sqladmin_instance.add_view(PropertyAdmin)
+sqladmin_instance.add_view(RoomAdmin)
+sqladmin_instance.add_view(MachineAdmin)
+sqladmin_instance.add_view(IssueAdmin)
+sqladmin_instance.add_view(PMScheduleAdmin)
+sqladmin_instance.add_view(WorkOrderAdmin)
+sqladmin_instance.add_view(JobAdmin)
+sqladmin_instance.add_view(NotificationAdmin)
 
 # Include API routers
 app.include_router(auth.router, prefix="/api/v1")
