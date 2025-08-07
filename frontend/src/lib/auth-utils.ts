@@ -19,7 +19,8 @@ export const getAuthBaseUrl = (): string => {
   
   // Fallbacks based on environment
   if (process.env.NODE_ENV === 'production') {
-    return 'http://localhost';
+    // Use the production IP address instead of localhost
+    return 'http://206.189.89.239';
   }
   
   return 'http://localhost:3000';
